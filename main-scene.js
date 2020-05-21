@@ -4,6 +4,8 @@ var is_pressed = false;
 var mouse_x = 0;
 var mouse_y = 0;
 
+console.log(data);
+
 var T = (x, y, x1, y1, x2, y2) => (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1);
 
 window.Covid_Map = window.classes.Covid_Map =
@@ -63,15 +65,23 @@ class Covid_Map extends Scene_Component
 
         // get the matrix to transform world coordinates into projection coordinate
         let world_to_perspective = this.proj_matrix.times(this.cam_matrix);
-
-
-        for (let i = 0; i < 50; i++){
-          
-          a = Math.sin(t + i / 5) + 1;
+var state; 
+var county;
+        // display a bar for every county
+        for (state in data){
+          state = data[state];
+          for (county of state){
+           
+            let lng = county.long;
+            let lat = county.lat;
+            let cases = county.cases;
+            if (cases  < 100)
+              continue;
+          //a = Math.sin(t + i / 5) + 1;
           // transform the bar
           let bar_transform =   Mat4.identity()
-                                .times(Mat4.translation([i * 1, 1, 0]))
-                                .times(Mat4.scale([0.2,a*0.8,0.2]))
+                                .times(Mat4.translation([(lng+95)/5 + 10, 0, -1 * (lat-37)/3]))
+                                .times(Mat4.scale([0.1,cases/10000,0.1]))
                                 .times(Mat4.translation([0, 1, 0]));   
 
           // check if any of the boxes collide with the mouse
@@ -127,7 +137,7 @@ class Covid_Map extends Scene_Component
                                     bar_transform, 
                                     this.materials.bar.override({color_base: color}));
         }
-
+      }
 
           
         // if(!event_added){
@@ -338,3 +348,7 @@ window.Bar_Shader = window.classes.Bar_Shader =
 //         intersect_test( T.times( p.to4(1) ).to3(), leeway ) );
 //     }
 // }
+
+var states = ['AK','AL','AR','AZ','CA','CO','CT','DC','DE','FL','GA','HI','IA','ID','IL','IN','KS','KY','LA','MA','MD','ME','MI','MN','MO','MS','MT','NC','ND','NE','NH','NJ','NM','NV','NY','OH','OK','OR','PA','PR','RI','SC','SD','TN','TX','UT','VA','VI','VT','WA','WI','WV','WY'];
+
+      
