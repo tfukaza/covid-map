@@ -28,8 +28,7 @@ import { Text_Demo }
   from "./examples/text-demo.js"
 import { Transforms_Sandbox }
   from "./examples/transforms-sandbox.js"
-
-  import { Covid_Map }
+import { Covid_Map }
   from "./examples/covid_map.js"
 
 Object.assign( defs,
