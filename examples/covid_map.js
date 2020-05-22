@@ -186,19 +186,10 @@ console.log(program_state);
               p = world_to_perspective.times(p);
              
               points[i] = [p[0]/p[3], -1 * p[1]/p[3], p[2]/ p[3], p[3]]; 
-              // if(i == 0)
-              //   console.log(points[0]);
             }
-            // if (t - Math.floor(t) < 0.001)
-            //   console.log(points);
-
             let p1_x = (mouse_x/this.w - 0.5) * 2, p1_y = (mouse_y/this.h - 0.5) * 2;
             //let p1_x = mouse_x, p1_y = mouse_y;
             let p2_x = p1_x + 100000, p2_y = p1_y;
-
-            //console.log([points[0][0]/points[0][3], -1 * points[0][1]/points[0][3]]);
-            // console.log(points[0]);
-            // console.log([p1_x, p1_y]);
             
             for (var i = 0; i < 4; i++){
 
