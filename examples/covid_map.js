@@ -11,6 +11,68 @@ console.log(data);
 
 var T = (x, y, x1, y1, x2, y2) => (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1);
 
+let states = {
+  "AL": "Alabama",
+  "AK": "Alaska",
+  "AS": "American Samoa",
+  "AZ": "Arizona",
+  "AR": "Arkansas",
+  "CA": "California",
+  "CO": "Colorado",
+  "CT": "Connecticut",
+  "DE": "Delaware",
+  "DC": "District Of Columbia",
+  "FM": "Federated States Of Micronesia",
+  "FL": "Florida",
+  "GA": "Georgia",
+  "GU": "Guam",
+  "HI": "Hawaii",
+  "ID": "Idaho",
+  "IL": "Illinois",
+  "IN": "Indiana",
+  "IA": "Iowa",
+  "KS": "Kansas",
+  "KY": "Kentucky",
+  "LA": "Louisiana",
+  "ME": "Maine",
+  "MH": "Marshall Islands",
+  "MD": "Maryland",
+  "MA": "Massachusetts",
+  "MI": "Michigan",
+  "MN": "Minnesota",
+  "MS": "Mississippi",
+  "MO": "Missouri",
+  "MT": "Montana",
+  "NE": "Nebraska",
+  "NV": "Nevada",
+  "NH": "New Hampshire",
+  "NJ": "New Jersey",
+  "NM": "New Mexico",
+  "NY": "New York",
+  "NC": "North Carolina",
+  "ND": "North Dakota",
+  "MP": "Northern Mariana Islands",
+  "OH": "Ohio",
+  "OK": "Oklahoma",
+  "OR": "Oregon",
+  "PW": "Palau",
+  "PA": "Pennsylvania",
+  "PR": "Puerto Rico",
+  "RI": "Rhode Island",
+  "SC": "South Carolina",
+  "SD": "South Dakota",
+  "TN": "Tennessee",
+  "TX": "Texas",
+  "UT": "Utah",
+  "VT": "Vermont",
+  "VI": "Virgin Islands",
+  "VA": "Virginia",
+  "WA": "Washington",
+  "WV": "West Virginia",
+  "WI": "Wisconsin",
+  "WY": "Wyoming"
+}
+
 export class Text_Line extends Shape                
 {                           // **Text_Line** embeds text in the 3D world, using a crude texture 
                             // method.  This Shape is made of a horizontal arrangement of quads.
@@ -94,7 +156,7 @@ export class Covid_Map extends Scene
     { 
 
       let data_text = "N/A";
-      program_state.set_camera( Mat4.rotation(0.3, 1, 0, 0).times(Mat4.translation( -2,-3,-10 )));
+      program_state.set_camera( Mat4.rotation(0.3, 1, 0, 0).times(Mat4.translation( -10,-7,-25 )));
 
 
       program_state.lights = [ new Light( vec4( 3,2,1,0 ),   color( 1,1,1,1 ),  1000000 ),
@@ -225,8 +287,26 @@ console.log(program_state);
         }
       }
 
-      this.shapes.text.set_string( data_text, context.context );
-      this.shapes.text.draw( context, program_state, Mat4.translation( -2,-3,-10), this.materials.text_image );
+      if (data_text !== "N/A") {
+        var city_data = JSON.parse(data_text);
+        console.log(city_data);
+
+        // draw city, state
+        this.shapes.text.set_string( city_data.name + "," + states[city_data.state], context.context );
+        this.shapes.text.draw( context, program_state, Mat4.translation(10, 6,-10), this.materials.text_image );
+
+        // draw date
+        this.shapes.text.set_string( "Date: " +city_data.date, context.context );
+        this.shapes.text.draw( context, program_state, Mat4.translation(10, 4,-10), this.materials.text_image );
+
+        // draw cases
+        this.shapes.text.set_string( "Cases: " + city_data.cases, context.context );
+        this.shapes.text.draw( context, program_state, Mat4.translation(10, 2,-10), this.materials.text_image );
+
+        // draw death
+        this.shapes.text.set_string( "Deaths: " +city_data.death, context.context );
+        this.shapes.text.draw( context, program_state, Mat4.translation(10, 0,-10), this.materials.text_image );
+      }  
     }
   }
 
