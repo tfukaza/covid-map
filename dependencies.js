@@ -1,4 +1,4 @@
-window.Triangle = window.classes.Triangle =
+window.classes.Triangle =
 class Triangle extends Shape    // The simplest possible Shape – one triangle.  It has 3 vertices, each
 { constructor()                 // having their own 3D position, normal vector, and texture-space coordinate.
     { super( "positions", "normals", "texture_coords" );                       // Name the values we'll define per each vertex.

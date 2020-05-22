@@ -1,3 +1,4 @@
+console.log("gay tiny graphics");
 // tiny-graphics.js - A file that shows how to organize a complete graphics program.
 // It wraps common WebGL commands, math, and web page interactions.  (by Garett)
 
@@ -249,6 +250,39 @@ class Code_Manager                            // Break up a string containing co
     }
 }
 
+window.Container = window.tiny_graphics.Container =
+class Container
+{                   // **Container** allows a way to create patch JavaScript objects within a single line.  Some properties get
+                    // replaced with substitutes that you provide, without having to write out a new object from scratch.
+                    // To override, simply pass in "replacement", a JS Object of keys/values you want to override, to generate 
+                    // a new object.  For shorthand you can leave off the key and only provide a value (pass in directly as 
+                    // "replacement") and a guess will be used for which member you want overridden based on type.  
+  override( replacement )                     // override(): Generate a copy by value, replacing certain properties.
+    { return this.helper( replacement, Object.create( this.constructor.prototype ) ) }
+  replace(  replacement )                     // replace(): Like override, but modifies the original object.
+    { return this.helper( replacement, this ) }
+  helper( replacement, target )               // (Internal helper function)
+    { Object.assign( target, this );
+      if( replacement.constructor === Object )             // If a JS object was given, use its entries to override:
+        return Object.assign( target, replacement );      
+                                                           // Otherwise we'll try to guess the key to override by type:
+      const matching_keys_by_type = Object.entries( this ).filter( ([key, value]) => replacement instanceof value.constructor );
+      if( !matching_keys_by_type[0] ) throw "Container: Can't figure out which value you're trying to replace; nothing matched by type.";
+      return Object.assign( target, { [ matching_keys_by_type[0][0] ]: replacement } );
+    }
+}
+
+window.Material = window.tiny_graphics.Material =
+class Material extends Container
+{                                       // **Material** contains messages for a shader program.  These configure the shader
+                                        // for the particular color and style of one shape being drawn.  A material consists
+                                        // of a pointer to the particular Shader it uses (to select that Shader for the draw
+                                        // command), as well as a collection of any options wanted by the shader.
+  constructor( shader, options )
+  { super();
+    Object.assign( this, { shader }, options );
+  }
+}
 
 window.Vertex_Buffer = window.tiny_graphics.Vertex_Buffer =
 class Vertex_Buffer           // To use Vertex_Buffer, make a subclass of it that overrides the constructor and fills in the right fields.  

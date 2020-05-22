@@ -1,3 +1,4 @@
+console.log("gay main scene");
 var canvas = undefined;
 var is_pressed = false;
 
@@ -9,137 +10,160 @@ console.log(data);
 var T = (x, y, x1, y1, x2, y2) => (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1);
 
 window.Covid_Map = window.classes.Covid_Map =
-class Covid_Map extends Scene_Component
-  { constructor( context, control_box )     // The scene begins by requesting the camera, shapes, and materials it will need.
-      { super(   context, control_box );    // First, include a secondary Scene that provides movement controls:
+class Covid_Map extends Scene_Component { 
+  constructor(context, control_box) {
+    // The scene begins by requesting the camera, shapes, and materials it will need.
+    // First, include a secondary Scene that provides movement controls:
+    super(context, control_box);    
         
-        // show on-screen controls if needed 
-        if( !context.globals.has_controls   ) 
-          context.register_scene_component( new Movement_Controls( context, control_box.parentElement.insertCell() ) ); 
+    // show on-screen controls if needed 
+    if (!context.globals.has_controls) 
+      context.register_scene_component( new Movement_Controls( context, control_box.parentElement.insertCell() ) ); 
 
-        // initialize camera orientation
-        context.globals.graphics_state.camera_transform = Mat4.look_at( Vec.of( 0,10,20 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) );
-        this.cam_matrix =  context.globals.graphics_state.camera_transform;
-        this.initial_camera_location = Mat4.inverse( context.globals.graphics_state.camera_transform );
+    // initialize camera orientation
+    context.globals.graphics_state.camera_transform = Mat4.look_at( Vec.of( 0,10,20 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) );
+    this.cam_matrix =  context.globals.graphics_state.camera_transform;
+    this.initial_camera_location = Mat4.inverse( context.globals.graphics_state.camera_transform );
 
-        // define aspect ratio
-        const r = context.width/context.height;
-        this.w = context.width;
-        this.h = context.height;
-        context.globals.graphics_state.projection_transform = Mat4.perspective( Math.PI/4, r, .1, 1000 );
-        this.proj_matrix =  context.globals.graphics_state.projection_transform;
+    // define aspect ratio
+    const r = context.width/context.height;
+    this.w = context.width;
+    this.h = context.height;
+    context.globals.graphics_state.projection_transform = Mat4.perspective( Math.PI/4, r, .1, 1000 );
+    this.proj_matrix =  context.globals.graphics_state.projection_transform;
 
-        // define shapes that will be used in this scene
-        const shapes = { torus:  new Torus( 15, 15 ),
-                         sphere1: new ( Subdivision_Sphere.prototype.make_flat_shaded_version() )(1),
-                         bar: new Cube()
-                       }
-        this.submit_shapes( context, shapes );
+    // define shapes that will be used in this scene
+    const shapes = { torus:  new Torus( 15, 15 ),
+                      sphere1: new ( Subdivision_Sphere.prototype.make_flat_shaded_version() )(1),
+                      bar: new Cube()
+                    }
+    this.submit_shapes( context, shapes );
+  
+    this.collision_box = {
+      box:  [
+              [[-1,-1,-1, 1], [1, -1, 1, 1], [1, 1, 1, 1], [-1, 1, -1, 1] ],
+              [[-1,-1,1, 1], [-1, 1, 1, 1], [1, 1, -1, 1], [1, -1, -1, 1] ]
+            ]
+    }
+
+    // Make some Material objects available to you:
+    this.materials =
+      { planet:   context.get_instance( Phong_Shader ).material( Color.of( 1,1,0,1 ), { ambient:1.0 } ),
+        sun:      context.get_instance( Phong_Shader ).material( Color.of( 1,0,0,1 ), { ambient: 1.0} ),
+        bar:     context.get_instance( Bar_Shader).material(Color.of( 1,0,0,1 ), Color.of( 1,0,0,1 ))
+      }
+
+    this.lights = [ new Light( Vec.of( 5,-10,5,1 ), Color.of( 0, 1, 1, 1 ), 1000 ), ];
+    
+    this.text_image = new Material( context.get_instance( Phong_Shader ), { ambient: 1, diffusivity: 0, specularity: 0,
+                                    texture: new Texture( "./text.png" ) });
+  }
+
+  make_control_panel() {
+    // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
+    this.key_triggered_button( "View solar system",  [ "0" ], () => this.attached = () => this.initial_camera_location );
+  }
+
+  display(graphics_state) { 
+    //graphics_state.lights = this.lights;        // Use the lights stored in this.lights.
+    const t = graphics_state.animation_time / 1000, dt = graphics_state.animation_delta_time / 1000;
+    let a = Math.sin(t) + 1;
+    //let a_planet = (t);
+
+    // get the matrix to transform world coordinates into projection coordinate
+    let world_to_perspective = this.proj_matrix.times(this.cam_matrix);
+    // display a bar for every county
+    for (let state in data) {
+      state = data[state];
+      for (let county of state) {
+        let lng = county.long;
+        let lat = county.lat;
+        let cases = county.cases;
+        if (cases  < 100)
+          continue;
+        //a = Math.sin(t + i / 5) + 1;
+        // transform the bar
+        let bar_transform = Mat4.identity()
+                            .times(Mat4.translation([(lng+95)/5 + 10, 0, -1 * (lat-37)/3]))
+                            .times(Mat4.scale([0.1,cases/10000,0.1]))
+                            .times(Mat4.translation([0, 1, 0]));   
+
+        // check if any of the boxes collide with the mouse
+        let mouse_over = this.collision_box.box.some(v => {
+          let result = 0;
+          let points=[0,0,0,0];
+          // transform the points, and convert them into projection space 
+          for (let i = 0; i < 4; i++) {
+            let v_tmp = v[i]
+            let p = bar_transform.times(Vec.of(v_tmp[0], v_tmp[1], v_tmp[2], 1));
+            p = world_to_perspective.times(p);
+            points[i] = [p[0]/p[3], -1 * p[1]/p[3], p[2][3], p[3]];
+          }
+          // if (t - Math.floor(t) < 0.001)
+          //   console.log(points);
+
+          let p1_x = (mouse_x/this.w - 0.5) * 2, p1_y = (mouse_y/this.h - 0.5) * 2;
+          //let p1_x = mouse_x, p1_y = mouse_y;
+          let p2_x = p1_x + 100000, p2_y = p1_y;
+
+          //console.log([points[0][0]/points[0][3], -1 * points[0][1]/points[0][3]]);
+          // console.log(points[0]);
+          // console.log([p1_x, p1_y]);
+          
+          for (let i = 0; i < 4; i++) {
+            let x1 = points[i][0], y1 = points[i][1];
+            let x2 = points[(i+1)%4][0], y2 = points[(i+1)%4][1];
+            
+            let R = T(p1_x, p1_y, x1, y1, x2, y2) * T(p2_x, p2_y, x1, y1, x2, y2);
+            let S = T(x1, y1, p1_x, p1_y, p2_x, p2_y) * T(x2, y2, p1_x, p1_y, p2_x, p2_y);
+            
+            if (R < 0 && S < 0) 
+              result+=1;
+          }
+
+          return result % 2 == 1;
+        });
+
+        //console.log(mouse_over);
+
+        let color = undefined;
+        if (!mouse_over) {
+          color = Color.of(0.2, 0.53, 0.53,1 );
+          //bar_transform = Mat4.scale([0.7,0.7,0.7]).times(bar_transform);
+        }
+        else
+          color = Color.of(0.7, 0.53, 0.53,1 );
+
+        this.shapes.bar.draw(graphics_state, 
+                              bar_transform, 
+                              this.materials.bar.override({color_base: color}));
+      }
+    }
+
+    let strings = [ "This is some text", "More text", "1234567890", "This is a line.\n\n\n"+"This is another line.", 
+                      Text_Line.toString(), Text_Line.toString() ];
       
-        this.collision_box = {
-          box:  [
-                  [[-1,-1,-1, 1], [1, -1, 1, 1], [1, 1, 1, 1], [-1, 1, -1, 1] ],
-                  [[-1,-1,1, 1], [-1, 1, 1, 1], [1, 1, -1, 1], [1, -1, -1, 1] ]
-                ]
-        }
+                        // Sample the "strings" array and draw them onto a cube.
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 2; j++) {
+        // Find the matrix for a basis located along one of the cube's sides:
+        let cube_side = Mat4.rotation(i == 0 ? Math.PI/2 : 0, 1, 0, 0)
+                .times( Mat4.rotation(Math.PI * j - (i == 1 ? Math.PI/2 : 0), 0, 1, 0))
+                .times( Mat4.translation(-0.9, 0.9, 1.01));
 
-        // Make some Material objects available to you:
-        this.materials =
-          { planet:   context.get_instance( Phong_Shader ).material( Color.of( 1,1,0,1 ), { ambient:1.0 } ),
-            sun:      context.get_instance( Phong_Shader ).material( Color.of( 1,0,0,1 ), { ambient: 1.0} ),
-            bar:     context.get_instance( Bar_Shader).material(Color.of( 1,0,0,1 ), Color.of( 1,0,0,1 ))
-          }
-
-        this.lights = [ new Light( Vec.of( 5,-10,5,1 ), Color.of( 0, 1, 1, 1 ), 1000 ), ];
-       
-      }
-    make_control_panel()            // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-      { this.key_triggered_button( "View solar system",  [ "0" ], () => this.attached = () => this.initial_camera_location );
-      }
-    display( graphics_state )
-      { 
-        //graphics_state.lights = this.lights;        // Use the lights stored in this.lights.
-        const t = graphics_state.animation_time / 1000, dt = graphics_state.animation_delta_time / 1000;
-        let a = Math.sin(t) + 1;
-        //let a_planet = (t);
-
-        // get the matrix to transform world coordinates into projection coordinate
-        let world_to_perspective = this.proj_matrix.times(this.cam_matrix);
-var state; 
-var county;
-        // display a bar for every county
-        for (state in data){
-          state = data[state];
-          for (county of state){
-           
-            let lng = county.long;
-            let lat = county.lat;
-            let cases = county.cases;
-            if (cases  < 100)
-              continue;
-          //a = Math.sin(t + i / 5) + 1;
-          // transform the bar
-          let bar_transform =   Mat4.identity()
-                                .times(Mat4.translation([(lng+95)/5 + 10, 0, -1 * (lat-37)/3]))
-                                .times(Mat4.scale([0.1,cases/10000,0.1]))
-                                .times(Mat4.translation([0, 1, 0]));   
-
-          // check if any of the boxes collide with the mouse
-          let mouse_over = this.collision_box.box.some(v => {
-            
-            let result = 0;
-            let points=[0,0,0,0];
-            // transform the points, and convert them into projection space 
-            for (var i = 0; i < 4; i++){
-              let v_tmp = v[i]
-              let p = bar_transform.times(Vec.of(v_tmp[0], v_tmp[1], v_tmp[2], 1));
-               p = world_to_perspective.times(p);
-              points[i] = [p[0]/p[3], -1 * p[1]/p[3], p[2][3], p[3]];
-            }
-            // if (t - Math.floor(t) < 0.001)
-            //   console.log(points);
-
-            let p1_x = (mouse_x/this.w - 0.5) * 2, p1_y = (mouse_y/this.h - 0.5) * 2;
-            //let p1_x = mouse_x, p1_y = mouse_y;
-            let p2_x = p1_x + 100000, p2_y = p1_y;
-
-            //console.log([points[0][0]/points[0][3], -1 * points[0][1]/points[0][3]]);
-            // console.log(points[0]);
-            // console.log([p1_x, p1_y]);
-            
-            for (var i = 0; i < 4; i++){
-
-              let x1 = points[i][0], y1 = points[i][1];
-              let x2 = points[(i+1)%4][0], y2 = points[(i+1)%4][1];
-              
-              let R = T(p1_x, p1_y, x1, y1, x2, y2) * T(p2_x, p2_y, x1, y1, x2, y2);
-              let S = T(x1, y1, p1_x, p1_y, p2_x, p2_y) * T(x2, y2, p1_x, p1_y, p2_x, p2_y);
-             
-              if(R < 0 && S < 0) result+=1;
-          
-            }
-
-            return result%2 == 1;
-
-          });
-
-          //console.log(mouse_over);
-
-          let color = undefined;
-          if (!mouse_over){
-            color = Color.of(0.2, 0.53, 0.53,1 );
-            //bar_transform = Mat4.scale([0.7,0.7,0.7]).times(bar_transform);
-          }
-          else
-            color = Color.of(0.7, 0.53, 0.53,1 );
-
-          this.shapes.bar.draw(     graphics_state, 
-                                    bar_transform, 
-                                    this.materials.bar.override({color_base: color}));
+        const multi_line_string = strings[2*i + j].split('\n');
+                      // Draw a Text_String for every line in our string, up to 30 lines:
+        for (let line of multi_line_string.slice(0, 30)) {
+          // Assign the string to Text_String, and then draw it.
+          this.shapes.text.set_string(line, context.context);
+          this.shapes.text.draw(context, program_state, funny_orbit.times(cube_side)
+                                                .times(Mat4.scale(0.03, 0.03, 0.03)), this.text_image);
+                      // Move our basis down a line.
+          cube_side.post_multiply(Mat4.translation(0, -0.06, 0));
         }
       }
-
-          
+    }
+  }
         // if(!event_added){
         //   canvas = document.getElementById('main-canvas').childNodes[0];
 
@@ -151,9 +175,7 @@ var county;
         //     // let rect = canvas.getBoundingClientRect();
         //   } 
         // }
-
-      }
-  }
+}
 
 // var points = [[1,1], [3,3], [4,6], [0,5]];
 // var test = [5,4];
