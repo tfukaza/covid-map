@@ -130,14 +130,14 @@ export class Covid_Map extends Scene
       this.widget_options = { make_controls: false };
         
       const phong   = new defs.Phong_Shader();
-      //const gradient = 
+      const gradient =  new Gradient_Shader();
       const texture = new defs.Textured_Phong( 1 );
 
       this.materials = {  grey:       new Material( phong, { color: color( .5,.5,.5,1 ), ambient: 0, 
                                       diffusivity: .3, specularity: .5, smoothness: 10 }),
                           text_image: new Material( texture, { ambient: 1, diffusivity: 0, specularity: 0,
-                                      texture: new Texture( "assets/text.png" ) })
-                          // gradient:   new Material( gradient, {})
+                                      texture: new Texture( "assets/text.png" ) }),
+                          gradient:   new Material( gradient, {}),
       };
 
       this.collision_box = {
@@ -156,7 +156,7 @@ export class Covid_Map extends Scene
     { 
 
       let data_text = "N/A";
-      program_state.set_camera( Mat4.rotation(0.3, 1, 0, 0).times(Mat4.translation( -10,-7,-25 )));
+      
 
 
       program_state.lights = [ new Light( vec4( 3,2,1,0 ),   color( 1,1,1,1 ),  1000000 ),
@@ -179,6 +179,7 @@ export class Covid_Map extends Scene
         });
         added_event = true;
         console.log(context.canvas);
+        console.log(offset_x);
         this.w = context.canvas.width;
         this.h = context.canvas.height;
       }
@@ -211,11 +212,12 @@ export class Covid_Map extends Scene
       
 
         // get the matrix to transform world coordinates into projection coordinate
-        let cam = Mat4.rotation(0.3, 1, 0, 0).times(Mat4.translation( -2,-3,-10 ));//program_state.camera_transform;
+        let cam = Mat4.rotation(0.3, 1, 0, 0).times(Mat4.translation( -7,-8,-20 ));//program_state.camera_transform;
+        program_state.set_camera(cam);
         let world_to_perspective = program_state.projection_transform.times(cam);
         var state; 
         var county;
-console.log(program_state);
+//console.log(program_state);
         //console.log(mouse_x + ',' + mouse_y);
         //console.log(this.h + ',' + this.w);
 
@@ -283,7 +285,7 @@ console.log(program_state);
           //console.log(bar_transform);
           this.shapes.bar.draw(     context, program_state,
                                     bar_transform, 
-                                    this.materials.grey.override({color: c}));
+                                    this.materials.gradient.override({base_color: c}));
         }
       }
 
@@ -313,90 +315,163 @@ console.log(program_state);
 
 
    
-    // class Bar_Shader extends Shader             // Subclasses of Shader each store and manage a complete GPU program.  This Shader is
-    // {                                             // the simplest example of one.  It samples pixels from colors that are directly assigned
-    //     material(color_base, color_top, properties) {
-    //         //return {shader: this}
-    //         { return new class Material       // Possible properties: color_base, color_top
-    //           { constructor( shader, color_base = Color.of( 0,1,0,1 ),  color_top = Color.of( 1,0,0,1 ))
-    //               { 
-    //                 //console.log(color_top);
-    //                 Object.assign( this, { shader, color_base, color_top } );  // Assign defaults.
-    //                 Object.assign( this, properties );                         // Optionally override defaults.
-    //               }
-    //             override( properties )                      // Easily make temporary overridden versions of a base material, such as
-    //               { 
-    //                 const copied = new this.constructor();  // of a different color or diffusivity.  Use "opacity" to override only that.
-    //                 Object.assign( copied, this );
-    //                 Object.assign( copied, properties );
-    //                 copied.color_base = copied.color_base.copy();     // non-primitives will need to be copied explicitly, since Js only does shallow copy
-    //                 copied.color_top = copied.color_top.copy();     
+    class Gradient_Shader extends tiny.Shader             // Subclasses of Shader each store and manage a complete GPU program.  This Shader is
+    {                                             // the simplest example of one.  It samples pixels from colors that are directly assigned
+        // material(color_base, color_top, properties) {
+        //     //return {shader: this}
+        //     { return new class Material       // Possible properties: color_base, color_top
+        //       { constructor( shader, color_base = Color.of( 0,1,0,1 ),  color_top = Color.of( 1,0,0,1 ))
+        //           { 
+        //             //console.log(color_top);
+        //             Object.assign( this, { shader, color_base, color_top } );  // Assign defaults.
+        //             Object.assign( this, properties );                         // Optionally override defaults.
+        //           }
+        //         override( properties )                      // Easily make temporary overridden versions of a base material, such as
+        //           { 
+        //             const copied = new this.constructor();  // of a different color or diffusivity.  Use "opacity" to override only that.
+        //             Object.assign( copied, this );
+        //             Object.assign( copied, properties );
+        //             copied.color_base = copied.color_base.copy();     // non-primitives will need to be copied explicitly, since Js only does shallow copy
+        //             copied.color_top = copied.color_top.copy();     
 
-    //                 // if( properties[ "opacity" ] != undefined ) 
-    //                 //   copied.color[3] = properties[ "opacity" ];
-    //                 return copied;
-    //               }
-    //           }( this, color_base, color_top );
-    //       }
-    //     }      // to the vertices.  Materials here are minimal, without any settings.
-    //     map_attribute_name_to_buffer_name(name)        // The shader will pull single entries out of the vertex arrays, by their data fields'
-    //     {                                              // names.  Map those names onto the arrays we'll pull them from.  This determines
-    //         // which kinds of Shapes this Shader is compatible with.  Thanks to this function,
-    //         // Vertex buffers in the GPU can get their pointers matched up with pointers to
-    //         // attribute names in the GPU.  Shapes and Shaders can still be compatible even
-    //         // if some vertex data feilds are unused.
-    //         return {object_space_pos: "positions", color: "colors"}[name];      // Use a simple lookup table.
-    //     }
+        //             // if( properties[ "opacity" ] != undefined ) 
+        //             //   copied.color[3] = properties[ "opacity" ];
+        //             return copied;
+        //           }
+        //       }( this, color_base, color_top );
+        //   }
+        // }      // to the vertices.  Materials here are minimal, without any settings.
 
-    //     // Define how to synchronize our JavaScript's variables to the GPU's:
-    //     update_GPU(g_state, model_transform, material, gpu = this.g_addrs, gl = this.gl) {
+        // constructor(base, top){
+        //   super();
+        //   this.base_color = base;
+        //   this.top_color = top;
 
-    //         const   [P, C, M] = [g_state.projection_transform, g_state.camera_transform, model_transform],
-    //                 PCM =       P.times(C).times(M);
+        // }
+        // map_attribute_name_to_buffer_name(name)        // The shader will pull single entries out of the vertex arrays, by their data fields'
+        // {                                              // names.  Map those names onto the arrays we'll pull them from.  This determines
+        //     // which kinds of Shapes this Shader is compatible with.  Thanks to this function,
+        //     // Vertex buffers in the GPU can get their pointers matched up with pointers to
+        //     // attribute names in the GPU.  Shapes and Shaders can still be compatible even
+        //     // if some vertex data feilds are unused.
+        //     return {object_space_pos: "positions", color: "colors"}[name];      // Use a simple lookup table.
+        // }
+
+        // // Define how to synchronize our JavaScript's variables to the GPU's:
+        // update_GPU(g_state, model_transform, material, gpu = this.g_addrs, gl = this.gl) {
+
+        //     const   [P, C, M] = [g_state.projection_transform, g_state.camera_transform, model_transform],
+        //             PCM =       P.times(C).times(M);
             
-    //         gl.uniformMatrix4fv(gpu.projection_camera_model_transform_loc, false, Mat.flatten_2D_to_1D(PCM.transposed()));
-    //         gl.uniformMatrix4fv(gpu.model_transform_loc, false, Mat.flatten_2D_to_1D(M.transposed()));
-    //         //console.log( material.color_base);
-    //         gl.uniform4fv( gpu.colorBase_loc,   material.color_base       );    // Send the desired shape-wide material qualities 
-    //         gl.uniform4fv( gpu.colorTop_loc,    material.color_top       );    // Send the desired shape-wide material qualities 
-    //     }
+        //     gl.uniformMatrix4fv(gpu.projection_camera_model_transform_loc, false, Mat.flatten_2D_to_1D(PCM.transposed()));
+        //     gl.uniformMatrix4fv(gpu.model_transform_loc, false, Mat.flatten_2D_to_1D(M.transposed()));
+        //     //console.log( material.color_base);
+        //     gl.uniform4fv( gpu.colorBase_loc,   material.color_base       );    // Send the desired shape-wide material qualities 
+        //     gl.uniform4fv( gpu.colorTop_loc,    material.color_top       );    // Send the desired shape-wide material qualities 
+        // }
 
-    //     shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
-    //     {
-    //         return `
-    //           precision mediump float;
-    //           varying vec4 VERTEX_COLOR;
-    //           uniform vec4 colorBase, colorTop;
-    //           `;
-    //     }
 
-    //     vertex_glsl_code()           // ********* VERTEX SHADER *********
-    //     {
-    //         return `
-    //           // attribute vec4 color;
-    //           attribute vec3 object_space_pos;
-    //           varying vec4 pos;
-    //           uniform mat4 projection_camera_model_transform;
-    //           uniform mat4 model_transform;
+        //     update_GPU( context, gpu_addresses, gpu_state, model_transform, material )
+        // {             // update_GPU(): Add a little more to the base class's version of this method.                
+        //   //super.update_GPU( context, gpu_addresses, gpu_state, model_transform, material );
+                                                  
+        //   if( material.texture && material.texture.ready )
+        //   {                         // Select texture unit 0 for the fragment shader Sampler2D uniform called "texture":
+        //     context.uniform1i( gpu_addresses.texture, 0);
+        //                               // For this draw, use the texture image from correct the GPU buffer:
+        //     material.texture.activate( context );
+        //   }
+        // }
 
-    //           void main()
-    //           { gl_Position = projection_camera_model_transform * vec4(object_space_pos, 1.0);      // The vertex's final resting place (in NDCS).
-    //             pos = model_transform * vec4(object_space_pos, 1.0);      // The vertex's final resting place (in NDCS).
-    //             VERTEX_COLOR = vec4( 
-    //               colorBase[0] * (10.0 - pos[1]) / 10.0 +  colorTop[0] * (pos[1]) / 10.0,
-    //               colorBase[1] * (10.0 - pos[1]) / 10.0 +  colorTop[1] * (pos[1]) / 10.0,
-    //               colorBase[2] * (10.0 - pos[1]) / 10.0 +  colorTop[2] * (pos[1]) / 10.0,
-    //               1
-    //             );                                                               // Use the hard-coded color of the vertex.
-    //           }
-    //         `;
-    //     }
+        // send_material( gl, gpu, material )
+        // {                                       // send_material(): Send the desired shape-wide material qualities to the
+        //                          // graphics card, where they will tweak the Phong lighting formula.                                      
+        //    gl.uniform4fv( gpu.colorBase,   material.base_color       );    // Send the desired shape-wide material qualities 
+        //    gl.uniform4fv( gpu.colorTop,    material.top_color       );    // Send the desired shape-wide material qualities 
+        // }
 
-    //     fragment_glsl_code()           // ********* FRAGMENT SHADER *********
-    //     {
-    //         return `
-    //     void main()
-    //     { gl_FragColor = VERTEX_COLOR;                                    // The interpolation gets done directly on the per-vertex colors.
-    //     }`;
-    //     }
-    // }
+
+        update_GPU( context, gpu_addresses, graphics_state, model_transform, material )
+          {             // update_GPU(): Define how to synchronize our JavaScript's variables to the GPU's.  This is where the shader 
+                        // recieves ALL of its inputs.  Every value the GPU wants is divided into two categories:  Values that belong
+                        // to individual objects being drawn (which we call "Material") and values belonging to the whole scene or 
+                        // program (which we call the "Program_State").  Send both a material and a program state to the shaders 
+                        // within this function, one data field at a time, to fully initialize the shader for a draw.                  
+            
+                        // Fill in any missing fields in the Material object with custom defaults for this shader:
+            // const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
+            // PCM = P.times( C ).times( M );
+            // context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, 
+            //                                                               Mat4.flatten_2D_to_1D( PCM.transposed() ) );
+
+            const defaults = { color: color( 0,0,0,1 ), ambient: 0, diffusivity: 1, specularity: 1, smoothness: 40, base_color: color(0,1,1,1), top_color: color(1,0,0,1)};
+            material = Object.assign( {}, defaults, material );
+
+            // this.send_material ( context, gpu_addresses, material );
+            //this.send_gpu_state( context, gpu_addresses, graphics_state, model_transform );
+            context.uniform4fv( gpu_addresses.colorBase,   material.base_color       );    // Send the desired shape-wide material qualities 
+            context.uniform4fv( gpu_addresses.colorTop,    material.top_color       );    // Send the desired shape-wide material qualities 
+            
+
+            const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
+            PCM = P.times( C ).times( M );
+
+            context.uniformMatrix4fv( gpu_addresses.model_transform, false, Mat4.flatten_2D_to_1D( M.transposed() ) );
+            context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat4.flatten_2D_to_1D( PCM.transposed() ) );
+
+
+          }
+
+          // send_gpu_state( gl, gpu_addresses, gpu_state, model_transform )
+          // {                                       // send_gpu_state():  Send the state of our whole drawing context to the GPU.
+          //   const [ P, C, M ] = [ program_state.projection_transform, program_state.camera_inverse, model_transform ],
+          //   PCM = P.times( C ).times( M );
+          //   gl.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
+          // }
+
+        shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+        {
+            return `
+              precision mediump float;
+              varying vec4 VERTEX_COLOR;
+              uniform vec4 colorBase, colorTop;
+              `;
+        }
+
+        vertex_glsl_code()           // ********* VERTEX SHADER *********
+        {
+            return this.shared_glsl_code() + `
+             
+              attribute vec3 position;
+
+              varying vec4 pos;
+              varying float t;
+              uniform mat4 projection_camera_model_transform;
+              uniform mat4 model_transform;
+              const float A = 10.0;
+              
+              void main()
+              { gl_Position = projection_camera_model_transform * vec4(position, 1.0);      // The vertex's final resting place (in NDCS).
+                
+                pos = model_transform * vec4(position, 1.0);      // The vertex's final resting place (in NDCS).
+                t = pos[1];
+      
+                VERTEX_COLOR = vec4( 
+                                 colorBase[0] * (A - t) / A +  colorTop[0] * (t) / A,
+                                 colorBase[1] * (A - t) / A +  colorTop[1] * (t) / A,
+                                 colorBase[2] * (A - t) / A +  colorTop[2] * (t) / A,
+                                 1
+                               );     
+              
+              }
+            `;
+        }
+
+        fragment_glsl_code()           // ********* FRAGMENT SHADER *********
+        {
+            return this.shared_glsl_code() + `
+        void main()
+        { gl_FragColor = VERTEX_COLOR;                                    // The interpolation gets done directly on the per-vertex colors.
+        }`;
+        }
+    }

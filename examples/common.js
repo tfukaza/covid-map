@@ -590,7 +590,8 @@ class Phong_Shader extends Shader
           } ` ;
     }
   send_material( gl, gpu, material )
-    {                                       // send_material(): Send the desired shape-wide material qualities to the
+    {  
+                                          // send_material(): Send the desired shape-wide material qualities to the
                                             // graphics card, where they will tweak the Phong lighting formula.                                      
       gl.uniform4fv( gpu.shape_color,    material.color       );
       gl.uniform1f ( gpu.ambient,        material.ambient     );
