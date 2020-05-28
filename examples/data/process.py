@@ -92,14 +92,14 @@ for row in info_reader:
 #date,county,state,fips,cases,deaths
 #2020-01-21,Snohomish,Washington,53061,1,0
 
-#JSON data = {'CA': [ {'name': county, 'date': date, 'cases': cases, 'death': death}  ]  }
+#JSON data = {'CA': {'name': county, 'long': lng, 'lat': lat, 'data': { date: {'cases': cases, 'death': death}}}  ]  }
 
 # create a map to keep track of which county we have parsed
-county_bag = {}
+#county_bag = {}
 data = {}
 
-# parse through entries, from latest to oldest
-for row in reversed(list(covid_reader)):
+# parse through entries
+for row in covid_reader:
 
     date = row[0]
     county = row[1]
@@ -114,19 +114,19 @@ for row in reversed(list(covid_reader)):
     death=row[5]
 
     # if this state is in our bag, see if the bag has the county
-    if state in county_bag:
+    if not state in data:
 
-        # if so, skip, since we already have data
-        if county in county_bag[state]:
-            continue
-        # else collect data
-        else:
-            county_bag[state][county] = True
+        # # if so, skip, since we already have data
+        # if county in county_bag[state]:
+        #     continue
+        # # else collect data
+        # else:
+        #county_bag[state][county] = True
     
-    else:
-        data[state] = []
-        county_bag[state] = {}
-        county_bag[state][county] = True
+    #else:
+        data[state] = {}
+        #county_bag[state] = {}
+        #county_bag[state][county] = True
 
     # continue processing... 
     # check if the county is in our map 
@@ -135,8 +135,22 @@ for row in reversed(list(covid_reader)):
 
     (lng, lat) = info_map[state][county]
 
-    data[state].append({'state': state, 'name': county, 'date': date, 'cases':cases, 'death':death, 'long': lng, 'lat': lat})
-
-
-j = open('data/data.json', 'w')
+    # check if we have seen this county before or not 
+    if county in data[state]:
+        # if so, append this data 
+        data[state][county]['data'][date] = {'cases':cases, 'death':death}
+    else:
+        # otherwise, initialize the entire county data
+        data[state][county] = { 'name': county, 
+                                'long': lng, 
+                                'lat': lat, 
+                                'data': { 
+                                    date: {
+                                        'cases': cases, 
+                                        'death': death
+                                          }
+                                        }
+                                } 
+j = open('data/data.js', 'w')
+j.write('export var data = ')
 json.dump(data, j)

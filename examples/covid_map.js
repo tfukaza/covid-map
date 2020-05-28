@@ -174,7 +174,7 @@ export class Covid_Map extends Scene {
   }
 
   display(context, program_state) { 
-    let data_text = "N/A";
+    let data_text = {};
     program_state.lights = [
       new Light(vec4(3, 2, 1, 0), color(1, 1, 1, 1), 1000000),
       new Light(vec4(3, 10, 10, 1), color(1, 0.7, 0.7, 1), 100000)
@@ -183,7 +183,7 @@ export class Covid_Map extends Scene {
     //program_state.set_camera( Mat4.look_at( ...Vector.cast( [ 0,0,4 ], [0,0,0], [0,1,0] ) ) );
     program_state.projection_transform = Mat4.perspective(Math.PI/4, context.width/context.height, 1, 500);
     //console.log(program_state);
-    //const t = program_state.animation_time/1000;
+    const t = program_state.animation_time/1000;
 
     if (!added_event) {
       const rec = context.canvas.getBoundingClientRect();
@@ -199,33 +199,6 @@ export class Covid_Map extends Scene {
       this.w = context.canvas.width;
       this.h = context.canvas.height;
     }
-    //const funny_orbit = Mat4.rotation( Math.PI/4*t,   Math.cos(t), Math.sin(t), .7*Math.cos(t) );
-    //this.shapes.cube.draw( context, program_state, funny_orbit, this.grey );
-    
-    
-    // let strings = [ "This is some text", "More text", "1234567890", "This is a line.\n\n\n"+"This is another line.", 
-    //                 Text_Line.toString(), Text_Line.toString() ];
-    
-                      // Sample the "strings" array and draw them onto a cube.
-    // for( let i = 0; i < 3; i++ )                    
-    //   for( let j = 0; j < 2; j++ )
-    //   {             // Find the matrix for a basis located along one of the cube's sides:
-    //     let cube_side = Mat4.rotation( i == 0 ? Math.PI/2 : 0,   1, 0, 0 )
-    //             .times( Mat4.rotation( Math.PI * j - ( i == 1 ? Math.PI/2 : 0 ),   0, 1, 0 ) )
-    //             .times( Mat4.translation( -.9, .9, 1.01 ) );
-
-    //     const multi_line_string = strings[ 2*i + j ].split('\n');
-    //                   // Draw a Text_String for every line in our string, up to 30 lines:
-    //     for( let line of multi_line_string.slice( 0,30 ) )
-    //     {             // Assign the string to Text_String, and then draw it.
-    //       this.shapes.text.set_string( line, context.context );
-    //       this.shapes.text.draw( context, program_state, funny_orbit.times( cube_side )
-    //                                            .times( Mat4.scale( .03,.03,.03 ) ), this.text_image );
-    //                   // Move our basis down a line.
-    //       cube_side.post_multiply( Mat4.translation( 0,-.06,0 ) );
-    //     }
-    //   }
-    
 
     // Get the matrix to transform world coordinates into projection coordinate
     let cam = Mat4.rotation(0.3, 1, 0, 0).times(Mat4.translation(-7, -8, -20));//program_state.camera_transform;
@@ -234,15 +207,42 @@ export class Covid_Map extends Scene {
 
     // Display a bar for every county
     for (let state in data) {
+      let state_name = state;
       state = data[state];
-      for (let county of state) {
+      for (let county in state) {
+        let name = county;
+     
+        county = state[county];
         //console.log(county);
         let lng = county.long;
         let lat = county.lat;
-        let cases = county.cases;
-        if (cases < 100)
-          continue;
-        //a = Math.sin(t + i / 5) + 1;
+        let cases = 0, death = 0;
+        let cases_next = 0, death_next = 0;
+        // determine today's date and tomorrow's date
+        let [today, tmrw] = lerp_date((t / 20) % 1);
+        //convert to string
+        [today, tmrw] = [date_to_string(today), date_to_string(tmrw)];
+        // if there is no record, treat it as 0
+        //console.log((county.data)['2020-05-14']);
+        if ((county.data)[today] !== undefined) {
+          cases = (county.data)[today].cases;
+          death = (county.data)[today].death;
+        }
+        if ((county.data)[tmrw] !== undefined) {
+          cases_next = (county.data)[tmrw].cases;
+          death_next = (county.data)[tmrw].death;
+        }
+
+        // interpolate cases between today and tomorrow for animation effect
+        let a = lerp_date_float((t / 20) % 1);
+        cases = cases * (1 - a) + cases_next * a;
+
+        if (cases < 50)
+         continue;
+        
+        //console.log(lng);
+          
+  
         // transform the bar
         let bar_transform = Mat4
           .translation((lng+95)/5 + 23, 0, -1 * (lat-37)/3)
@@ -282,13 +282,18 @@ export class Covid_Map extends Scene {
           return result % 2 == 1;
         });
 
-        //console.log(mouse_over);
         let c;
         if (!mouse_over) {
           c = color(0.2, 0.53, 0.53, 1);
         } else {
           c = color(0.7, 0.53, 0.53, 1);
-          data_text = JSON.stringify(county);
+          data_text = {
+            "name": name,
+            "state_name": state_name,
+            "date": today,
+            "cases": Math.floor(cases),
+            "death":  Math.floor(death)
+          };
         }
         
         //console.log(bar_transform);
@@ -301,126 +306,62 @@ export class Covid_Map extends Scene {
       }
     }
 
-    if (data_text !== "N/A") {
-      const city_data = JSON.parse(data_text);
-      console.log(city_data);
+    if (data_text.name !== undefined) {
+      //const city_data = JSON.parse(data_text);
+      let strings = [
+        data_text.name + "," + data_text.state_name,
+        "Date: " + data_text.date,
+        "Cases: " + data_text.cases,
+        "Deaths: " + data_text.death,
+      ]
 
-      // draw city, state
-      this.shapes.text.set_string(city_data.name + "," + states[city_data.state], context.context);
-      this.shapes.text.draw(context, program_state, Mat4.translation(10, 6, -10), this.materials.text_image);
+      let i = 0;
 
-      // draw date
-      this.shapes.text.set_string("Date: " +city_data.date, context.context);
-      this.shapes.text.draw(context, program_state, Mat4.translation(10, 4, -10), this.materials.text_image);
+      for (let s of strings){
+        this.shapes.text.set_string(s, context.context);
+        this.shapes.text.draw(context, program_state, Mat4.translation(10, 6 - 2 * i, -10), this.materials.text_image);
+        i+=2;
+      }
 
-      // draw cases
-      this.shapes.text.set_string("Cases: " + city_data.cases, context.context);
-      this.shapes.text.draw(context, program_state, Mat4.translation(10, 2,-10), this.materials.text_image);
-
-      // draw death
-      this.shapes.text.set_string("Deaths: " +city_data.death, context.context);
-      this.shapes.text.draw(context, program_state, Mat4.translation(10, 0,-10), this.materials.text_image);
     }  
   }
 }
+
+// function that takes a float 0~1 and interpolates between the date 2020-1-21 and 2020-5-18
+// returns the date and the next date
+function lerp_date(a){
+  var start = new Date('2020-1-21');
+  var end = start.setDate(start.getDate() + Math.floor(a * 117));
+  var current = new Date(end);
+  var current_2 = new Date(end);
+  current_2.setDate(current_2.getDate() + 1);
+  return [current, current_2];
+}
+
+function lerp_date_float(a){
+  let divider = Math.floor(a * 117);
+  let index = a * 117 - divider;
+  return index;
+}
+
+function date_to_string(date){
+  let c = date.getDate();
+  if (c <= 9)
+    c = '0' + c; 
+  return date.getFullYear() + '-0' + (date.getMonth() + 1) + '-' + c;
+}
    
-class Gradient_Shader extends tiny.Shader             // Subclasses of Shader each store and manage a complete GPU program.  This Shader is
-{                                             // the simplest example of one.  It samples pixels from colors that are directly assigned
-    // material(color_base, color_top, properties) {
-    //     //return {shader: this}
-    //     { return new class Material       // Possible properties: color_base, color_top
-    //       { constructor( shader, color_base = Color.of( 0,1,0,1 ),  color_top = Color.of( 1,0,0,1 ))
-    //           { 
-    //             //console.log(color_top);
-    //             Object.assign( this, { shader, color_base, color_top } );  // Assign defaults.
-    //             Object.assign( this, properties );                         // Optionally override defaults.
-    //           }
-    //         override( properties )                      // Easily make temporary overridden versions of a base material, such as
-    //           { 
-    //             const copied = new this.constructor();  // of a different color or diffusivity.  Use "opacity" to override only that.
-    //             Object.assign( copied, this );
-    //             Object.assign( copied, properties );
-    //             copied.color_base = copied.color_base.copy();     // non-primitives will need to be copied explicitly, since Js only does shallow copy
-    //             copied.color_top = copied.color_top.copy();     
-
-    //             // if( properties[ "opacity" ] != undefined ) 
-    //             //   copied.color[3] = properties[ "opacity" ];
-    //             return copied;
-    //           }
-    //       }( this, color_base, color_top );
-    //   }
-    // }      // to the vertices.  Materials here are minimal, without any settings.
-
-    // constructor(base, top){
-    //   super();
-    //   this.base_color = base;
-    //   this.top_color = top;
-
-    // }
-    // map_attribute_name_to_buffer_name(name)        // The shader will pull single entries out of the vertex arrays, by their data fields'
-    // {                                              // names.  Map those names onto the arrays we'll pull them from.  This determines
-    //     // which kinds of Shapes this Shader is compatible with.  Thanks to this function,
-    //     // Vertex buffers in the GPU can get their pointers matched up with pointers to
-    //     // attribute names in the GPU.  Shapes and Shaders can still be compatible even
-    //     // if some vertex data feilds are unused.
-    //     return {object_space_pos: "positions", color: "colors"}[name];      // Use a simple lookup table.
-    // }
-
-    // // Define how to synchronize our JavaScript's variables to the GPU's:
-    // update_GPU(g_state, model_transform, material, gpu = this.g_addrs, gl = this.gl) {
-
-    //     const   [P, C, M] = [g_state.projection_transform, g_state.camera_transform, model_transform],
-    //             PCM =       P.times(C).times(M);
-        
-    //     gl.uniformMatrix4fv(gpu.projection_camera_model_transform_loc, false, Mat.flatten_2D_to_1D(PCM.transposed()));
-    //     gl.uniformMatrix4fv(gpu.model_transform_loc, false, Mat.flatten_2D_to_1D(M.transposed()));
-    //     //console.log( material.color_base);
-    //     gl.uniform4fv( gpu.colorBase_loc,   material.color_base       );    // Send the desired shape-wide material qualities 
-    //     gl.uniform4fv( gpu.colorTop_loc,    material.color_top       );    // Send the desired shape-wide material qualities 
-    // }
-
-
-    //     update_GPU( context, gpu_addresses, gpu_state, model_transform, material )
-    // {             // update_GPU(): Add a little more to the base class's version of this method.                
-    //   //super.update_GPU( context, gpu_addresses, gpu_state, model_transform, material );
-                                              
-    //   if( material.texture && material.texture.ready )
-    //   {                         // Select texture unit 0 for the fragment shader Sampler2D uniform called "texture":
-    //     context.uniform1i( gpu_addresses.texture, 0);
-    //                               // For this draw, use the texture image from correct the GPU buffer:
-    //     material.texture.activate( context );
-    //   }
-    // }
-
-    // send_material( gl, gpu, material )
-    // {                                       // send_material(): Send the desired shape-wide material qualities to the
-    //                          // graphics card, where they will tweak the Phong lighting formula.                                      
-    //    gl.uniform4fv( gpu.colorBase,   material.base_color       );    // Send the desired shape-wide material qualities 
-    //    gl.uniform4fv( gpu.colorTop,    material.top_color       );    // Send the desired shape-wide material qualities 
-    // }
-
-
+class Gradient_Shader extends tiny.Shader             
+{                                             
+  
     update_GPU( context, gpu_addresses, graphics_state, model_transform, material )
-      {             // update_GPU(): Define how to synchronize our JavaScript's variables to the GPU's.  This is where the shader 
-                    // recieves ALL of its inputs.  Every value the GPU wants is divided into two categories:  Values that belong
-                    // to individual objects being drawn (which we call "Material") and values belonging to the whole scene or 
-                    // program (which we call the "Program_State").  Send both a material and a program state to the shaders 
-                    // within this function, one data field at a time, to fully initialize the shader for a draw.                  
-        
-                    // Fill in any missing fields in the Material object with custom defaults for this shader:
-        // const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
-        // PCM = P.times( C ).times( M );
-        // context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, 
-        //                                                               Mat4.flatten_2D_to_1D( PCM.transposed() ) );
+    {            
 
         const defaults = { color: color( 0,0,0,1 ), ambient: 0, diffusivity: 1, specularity: 1, smoothness: 40, base_color: color(0,1,1,1), top_color: color(1,0,0,1)};
         material = Object.assign( {}, defaults, material );
 
-        // this.send_material ( context, gpu_addresses, material );
-        //this.send_gpu_state( context, gpu_addresses, graphics_state, model_transform );
         context.uniform4fv( gpu_addresses.colorBase,   material.base_color       );    // Send the desired shape-wide material qualities 
         context.uniform4fv( gpu_addresses.colorTop,    material.top_color       );    // Send the desired shape-wide material qualities 
-        
 
         const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
         PCM = P.times( C ).times( M );
@@ -428,15 +369,7 @@ class Gradient_Shader extends tiny.Shader             // Subclasses of Shader ea
         context.uniformMatrix4fv( gpu_addresses.model_transform, false, Mat4.flatten_2D_to_1D( M.transposed() ) );
         context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat4.flatten_2D_to_1D( PCM.transposed() ) );
 
-
-      }
-
-      // send_gpu_state( gl, gpu_addresses, gpu_state, model_transform )
-      // {                                       // send_gpu_state():  Send the state of our whole drawing context to the GPU.
-      //   const [ P, C, M ] = [ program_state.projection_transform, program_state.camera_inverse, model_transform ],
-      //   PCM = P.times( C ).times( M );
-      //   gl.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
-      // }
+    }
 
     shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
     {
@@ -479,8 +412,8 @@ class Gradient_Shader extends tiny.Shader             // Subclasses of Shader ea
     fragment_glsl_code()           // ********* FRAGMENT SHADER *********
     {
         return this.shared_glsl_code() + `
-    void main()
-    { gl_FragColor = VERTEX_COLOR;                                    // The interpolation gets done directly on the per-vertex colors.
-    }`;
+          void main()
+          { gl_FragColor = VERTEX_COLOR;                                    // The interpolation gets done directly on the per-vertex colors.
+          }`;
     }
 }
