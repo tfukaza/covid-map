@@ -7,7 +7,13 @@ var mouse_x, mouse_y;
 var offset_x, offset_y;
 var added_event = false;
 
-console.log(data);
+var mouse_move = false;
+var mouse_pre = [0,0];
+
+var current_pos = vec3(-3,-8, -16);
+
+
+var w = 0, h = 0;
 
 var T = (x, y, x1, y1, x2, y2) => (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1);
 
@@ -186,24 +192,48 @@ export class Covid_Map extends Scene {
     const t = program_state.animation_time/1000;
 
     if (!added_event) {
-      const rec = context.canvas.getBoundingClientRect();
-      offset_x = rec.left - 8;
-      offset_y = rec.top;
-      context.canvas.addEventListener('mousemove', e => {
-        mouse_x = e.clientX - offset_x;
-        mouse_y = e.clientY - offset_y;
-      });
-      added_event = true;
-      console.log(context.canvas);
-      console.log(offset_x);
-      this.w = context.canvas.width;
-      this.h = context.canvas.height;
+      init_events(context);
     }
 
+    let cam_rot = Mat4.rotation(0.3, 1, 0, 0);
+
+    // generate parametric equation for mouse ray
+    let mouse_vec = cam_rot.times(
+                        vec4( (mouse_x/w - 0.5) * Math.tan(Math.PI / 4 / 2),
+                          (mouse_y/h - 0.5) * Math.tan(Math.PI / 4 / 2) * (h/w),
+                          -1,
+                          0
+                        )
+                    );
+    let pos_cur = intersect(current_pos, mouse_vec.to3(), vec3(0,0,0), vec3(0,1,0));
+    mouse_vec = cam_rot.times(
+                        vec4( (mouse_pre[0]/w - 0.5) * Math.tan(Math.PI / 4 / 2),
+                          (mouse_pre[1]/h - 0.5) * Math.tan(Math.PI / 4 / 2) * (h/w),
+                          -1,
+                          0
+                        )
+                      );
+    let pos_pre = intersect(current_pos, mouse_vec.to3(), vec3(0,0,0), vec3(0,1,0));
+
+    console.log(current_pos);
+    // if camera is being moved
+    if (mouse_move){
+    
+      // get the difference of current and previous mouse position
+      current_pos = vec3( clamp(current_pos[0] + (pos_cur[0] - pos_pre[0])/0.5, -21, 10),
+                          current_pos[1], 
+                          clamp(current_pos[2] + (pos_cur[2] - pos_pre[2])/0.5, -16, 1,0)
+                        );
+      //console.log(current_pos);
+    }
+    // record current position of mouse
+    mouse_pre = [mouse_x, mouse_y];
+
+    let cam_move = cam_rot.times(Mat4.translation(current_pos[0], current_pos[1], current_pos[2]));//program_state.camera_transform;
+    program_state.set_camera(cam_move);
+
     // Get the matrix to transform world coordinates into projection coordinate
-    let cam = Mat4.rotation(0.3, 1, 0, 0).times(Mat4.translation(-7, -8, -20));//program_state.camera_transform;
-    program_state.set_camera(cam);
-    let world_to_perspective = program_state.projection_transform.times(cam);
+    let world_to_perspective = program_state.projection_transform.times(cam_move);
 
     // Display a bar for every county
     for (let state in data) {
@@ -261,8 +291,8 @@ export class Covid_Map extends Scene {
             points[i] = [p[0]/p[3], -1 * p[1]/p[3], p[2]/ p[3], p[3]]; 
           }
 
-          let p1_x = (mouse_x/this.w - 0.5) * 2;
-          let p1_y = (mouse_y/this.h - 0.5) * 2;
+          let p1_x = (mouse_x/w - 0.5) * 2;
+          let p1_y = (mouse_y/h - 0.5) * 2;
           //let p1_x = mouse_x, p1_y = mouse_y;
           let p2_x = p1_x + 100000;
           let p2_y = p1_y;
@@ -327,6 +357,43 @@ export class Covid_Map extends Scene {
   }
 }
 
+
+
+// given a vector and a normal for a plane, computes the location where the vector intersects the plane
+function intersect(p_pos, p_vec, n_pos, n_vec){
+  // https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+  let t = ((n_pos.minus(p_pos)).dot(n_vec)) / (p_vec.dot(n_vec));
+  return p_pos.plus(p_vec.times(t));
+
+}
+
+function init_events(context){
+  const rec = context.canvas.getBoundingClientRect();
+    offset_x = rec.left - 8;
+    offset_y = rec.top;
+    // add event listeners for mouse input
+    context.canvas.addEventListener('mousemove', e => {
+      mouse_x = e.clientX - offset_x;
+      mouse_y = e.clientY - offset_y;
+    });
+
+    context.canvas.addEventListener('mousedown', e => {
+      if(e.button == 0)
+        mouse_move = true;
+    });
+
+    context.canvas.addEventListener('mouseup', e => {
+      if(e.button == 0)
+        mouse_move = false;
+    });
+
+    added_event = true;
+    console.log(context.canvas);
+    console.log(offset_x);
+    w = context.canvas.width;
+    h = context.canvas.height;
+}
+
 // function that takes a float 0~1 and interpolates between the date 2020-1-21 and 2020-5-18
 // returns the date and the next date
 function lerp_date(a){
@@ -351,6 +418,10 @@ function date_to_string(date){
   return date.getFullYear() + '-0' + (date.getMonth() + 1) + '-' + c;
 }
    
+function clamp(n, min, max){
+  return Math.max(Math.min(n, max), min);
+} 
+
 class Gradient_Shader extends tiny.Shader             
 {                                             
   
