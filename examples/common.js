@@ -716,11 +716,17 @@ class Fake_Bump_Map extends Textured_Phong
             vec4 tex_color = texture2D( texture, f_tex_coord );
             if( tex_color.w < .01 ) discard;
                              // Slightly disturb normals based on sampling the same image that was used for texturing:
-            vec3 bumped_N  = N + tex_color.rgb - .5*vec3(1,1,1);
+            vec3 bumped_N  =    normalize(
+              vec3(
+                N[0] + tex_color.x * 0.9,
+                N[1],
+                N[2] + tex_color.z * 0.9
+              ));
+                               // N + tex_color.rgb - 0.5*vec3(1,1,1);
                                                                      // Compute an initial (ambient) color:
             gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                                                                      // Compute the final color with contributions from lights:
-            gl_FragColor.xyz += phong_model_lights( normalize( bumped_N ), vertex_worldspace );
+            gl_FragColor.xyz = phong_model_lights( normalize( bumped_N ), vertex_worldspace );
           } ` ;
     }
 }

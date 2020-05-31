@@ -138,7 +138,8 @@ export class Covid_Map extends Scene {
     this.shapes = {
       bar: new defs.Cube(), 
       text: new Text_Line(35),
-      map: new defs.Square()
+      map: new defs.Square(),
+      cube: new defs.Cube(),
     };
 
     // Don't create any DOM elements to control this scene:
@@ -146,7 +147,7 @@ export class Covid_Map extends Scene {
     
     const phong = new defs.Phong_Shader();
     const gradient = new Gradient_Shader();
-    const texture = new defs.Textured_Phong(1);
+    const texture = new defs.Fake_Bump_Map(1);
 
     this.materials = {  
       grey: new Material(
@@ -170,17 +171,18 @@ export class Covid_Map extends Scene {
       ),
       gradient: new Material(gradient, {}),
       usa_map: new Material(
-        phong, 
+        texture, 
         { 
-          color: color(0, 0, 0, 1), 
-          ambient: 1, 
-          diffusivity: 0, 
-          specularity: 0, 
-          texture: new Texture("assets/text.png")
+          color: color(0.1, 0.1, 0.1, 1), 
+          ambient: 0.3,  
+          diffusivity: 0.3, 
+          specularity: 0.5, 
+          smoothness: 10,
+          texture: new Texture("assets/map-t.png")
         }
       )
     };
-
+    //this.lights = [ new Light( Vec.of(0, 0, 0, 1), Color.of(0, 0, 0, 1), 1000 ) ];
     this.collision_box = {
       box: [
         [[-1,-1,-1, 1], [1, -1, 1, 1], [1, 1, 1, 1], [-1, 1, -1, 1]],
@@ -193,10 +195,8 @@ export class Covid_Map extends Scene {
   display(context, program_state) { 
     let data_text = {};
     program_state.lights = [
-      new Light(vec4(3, 2, 1, 0), color(1, 1, 1, 1), 1000000),
-      new Light(vec4(3, 10, 10, 1), color(1, 0.7, 0.7, 1), 100000)
+      new Light(Mat4.scale(3,3,3).times(vec4(5, 5, 0, 1)), color(1, 1, 1, 1), 10000000),
     ];
-
     //program_state.set_camera( Mat4.look_at( ...Vector.cast( [ 0,0,4 ], [0,0,0], [0,1,0] ) ) );
     program_state.projection_transform = Mat4.perspective(Math.PI/4, context.width/context.height, 1, 500);
     //console.log(program_state);
@@ -214,9 +214,9 @@ export class Covid_Map extends Scene {
 
     // usa model
     const map_transform = Mat4.translation(3.6, 0, 0)
-      .times(Mat4.scale(5.5, 1, 4))
+      .times(Mat4.scale(6.0, 1, 5.6))
       .times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
-    this.shapes.map.draw(context, program_state, map_transform, this.materials.grey);
+    this.shapes.map.draw(context, program_state, map_transform, this.materials.usa_map);
 
     // generate parametric equation for mouse ray
     let mouse_vec = cam_rot.times(
@@ -297,7 +297,7 @@ export class Covid_Map extends Scene {
         // transform the bar
         let bar_transform = Mat4
           .translation((lng+95)/5 + 23, 0, -1 * (lat-37)/3)
-          .times(Mat4.scale(0.1, cases/10000, 0.1))
+          .times(Mat4.scale(0.04, cases/10000, 0.04))
           .times(Mat4.translation(0, 1, 0));   
           
         // check if any of the boxes collide with the mouse
@@ -356,6 +356,13 @@ export class Covid_Map extends Scene {
         );
       }
     }
+
+    // this.shapes.cube.draw(
+    //   context, 
+    //   program_state,
+    //   Mat4.identity(), 
+    //   this.materials.grey
+    // );
 
     if (data_text.name !== undefined) {
       //const city_data = JSON.parse(data_text);
