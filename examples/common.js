@@ -718,9 +718,9 @@ class Fake_Bump_Map extends Textured_Phong
                              // Slightly disturb normals based on sampling the same image that was used for texturing:
             vec3 bumped_N  =    normalize(
               vec3(
-                N[0] + tex_color.x * 0.9,
+                N[0] + (tex_color.x - 0.5) * 2.0,
                 N[1],
-                N[2] + tex_color.z * 0.9
+                N[2] + (tex_color.y - 0.5) * 2.0
               ));
                                // N + tex_color.rgb - 0.5*vec3(1,1,1);
                                                                      // Compute an initial (ambient) color:

@@ -173,10 +173,10 @@ export class Covid_Map extends Scene {
       usa_map: new Material(
         texture, 
         { 
-          color: color(0.1, 0.1, 0.1, 1), 
+          color: color(0, 0, 0, 1), 
           ambient: 0.3,  
           diffusivity: 0.3, 
-          specularity: 0.5, 
+          specularity: 0.8, 
           smoothness: 10,
           texture: new Texture("assets/map-t.png")
         }
@@ -195,7 +195,7 @@ export class Covid_Map extends Scene {
   display(context, program_state) { 
     let data_text = {};
     program_state.lights = [
-      new Light(Mat4.scale(3,3,3).times(vec4(5, 5, 0, 1)), color(1, 1, 1, 1), 10000000),
+      new Light(Mat4.scale(3,3,3).times(vec4(-1, 5, -5, 1)), color(1, 1, 1, 1), 1000),
     ];
     //program_state.set_camera( Mat4.look_at( ...Vector.cast( [ 0,0,4 ], [0,0,0], [0,1,0] ) ) );
     program_state.projection_transform = Mat4.perspective(Math.PI/4, context.width/context.height, 1, 500);
