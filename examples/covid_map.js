@@ -137,7 +137,8 @@ export class Covid_Map extends Scene {
     super()
     this.shapes = {
       bar: new defs.Cube(), 
-      text: new Text_Line(35)
+      text: new Text_Line(35),
+      map: new defs.Square()
     };
 
     // Don't create any DOM elements to control this scene:
@@ -168,6 +169,16 @@ export class Covid_Map extends Scene {
         }
       ),
       gradient: new Material(gradient, {}),
+      usa_map: new Material(
+        phong, 
+        { 
+          color: color(0, 0, 0, 1), 
+          ambient: 1, 
+          diffusivity: 0, 
+          specularity: 0, 
+          texture: new Texture("assets/text.png")
+        }
+      )
     };
 
     this.collision_box = {
@@ -195,7 +206,17 @@ export class Covid_Map extends Scene {
       init_events(context);
     }
 
+    // meow >(owo )<
+    //       ( <   )
+    // ~~~~~~~~~~~~
+
     let cam_rot = Mat4.rotation(0.3, 1, 0, 0);
+
+    // usa model
+    const map_transform = Mat4.translation(3.6, 0, 0)
+      .times(Mat4.scale(5.5, 1, 4))
+      .times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
+    this.shapes.map.draw(context, program_state, map_transform, this.materials.grey);
 
     // generate parametric equation for mouse ray
     let mouse_vec = cam_rot.times(
@@ -349,7 +370,7 @@ export class Covid_Map extends Scene {
 
       for (let s of strings){
         this.shapes.text.set_string(s, context.context);
-        this.shapes.text.draw(context, program_state, Mat4.translation(10, 6 - 2 * i, -10), this.materials.text_image);
+        this.shapes.text.draw(context, program_state, Mat4.translation(10, 6 - 2 * i, -10).times(Mat4.scale(0.5, 0.5, 0.5)), this.materials.text_image);
         i+=2;
       }
 

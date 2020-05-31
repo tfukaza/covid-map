@@ -645,7 +645,6 @@ class Phong_Shader extends Shader
     }
 }
 
-
 const Textured_Phong = defs.Textured_Phong =
 class Textured_Phong extends Phong_Shader
 {                       // **Textured_Phong** is a Phong Shader extended to addditionally decal a
