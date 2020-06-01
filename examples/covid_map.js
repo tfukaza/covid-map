@@ -12,6 +12,7 @@ var mouse_pre = [0,0];
 
 var current_pos = vec3(-3,-8, -16);
 
+const cases_scale = 10000;
 
 var w = 0, h = 0;
 
@@ -173,10 +174,10 @@ export class Covid_Map extends Scene {
       usa_map: new Material(
         texture, 
         { 
-          color: color(0, 0, 0, 1), 
-          ambient: 0.3,  
-          diffusivity: 0.3, 
-          specularity: 0.8, 
+          color: color(1, 1, 1, 1), 
+          ambient: 0.5,  
+          diffusivity: 0.5, 
+          specularity: 0.0, 
           smoothness: 10,
           texture: new Texture("assets/map-t.png")
         }
@@ -213,8 +214,8 @@ export class Covid_Map extends Scene {
     let cam_rot = Mat4.rotation(0.3, 1, 0, 0);
 
     // usa model
-    const map_transform = Mat4.translation(3.6, 0, 0)
-      .times(Mat4.scale(6.0, 1, 5.6))
+    const map_transform = Mat4.translation(3.8, 0, -0.2)
+      .times(Mat4.scale(6.0, 1, 7.0))
       .times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
     this.shapes.map.draw(context, program_state, map_transform, this.materials.usa_map);
 
@@ -227,25 +228,25 @@ export class Covid_Map extends Scene {
                         )
                     );
     let pos_cur = intersect(current_pos, mouse_vec.to3(), vec3(0,0,0), vec3(0,1,0));
-    mouse_vec = cam_rot.times(
+    let mouse_vec_pre = cam_rot.times(
                         vec4( (mouse_pre[0]/w - 0.5) * Math.tan(Math.PI / 4 / 2),
                           (mouse_pre[1]/h - 0.5) * Math.tan(Math.PI / 4 / 2) * (h/w),
                           -1,
                           0
                         )
                       );
-    let pos_pre = intersect(current_pos, mouse_vec.to3(), vec3(0,0,0), vec3(0,1,0));
+    let pos_pre = intersect(current_pos, mouse_vec_pre.to3(), vec3(0,0,0), vec3(0,1,0));
 
-    console.log(current_pos);
+    
     // if camera is being moved
     if (mouse_move){
     
       // get the difference of current and previous mouse position
-      current_pos = vec3( clamp(current_pos[0] + (pos_cur[0] - pos_pre[0])/0.5, -21, 10),
+      current_pos = vec3( clamp(current_pos[0] + (pos_cur[0] - pos_pre[0])/0.3, -21, 10),
                           current_pos[1], 
-                          clamp(current_pos[2] + (pos_cur[2] - pos_pre[2])/0.5, -16, 1,0)
+                          clamp(current_pos[2] + (pos_cur[2] - pos_pre[2])/0.3, -16, 1,0)
                         );
-      //console.log(current_pos);
+     
     }
     // record current position of mouse
     mouse_pre = [mouse_x, mouse_y];
@@ -255,6 +256,10 @@ export class Covid_Map extends Scene {
 
     // Get the matrix to transform world coordinates into projection coordinate
     let world_to_perspective = program_state.projection_transform.times(cam_move);
+
+    let z_max = 1000000000;
+    let z_buffer = [];
+    let bundle = [context, program_state, 0, this.materials.gradient];
 
     // Display a bar for every county
     for (let state in data) {
@@ -288,83 +293,75 @@ export class Covid_Map extends Scene {
         let a = lerp_date_float((t / 20) % 1);
         cases = cases * (1 - a) + cases_next * a;
 
-        if (cases < 50)
+        if (cases < 10)
          continue;
         
-        //console.log(lng);
-          
-  
+    
         // transform the bar
         let bar_transform = Mat4
           .translation((lng+95)/5 + 23, 0, -1 * (lat-37)/3)
-          .times(Mat4.scale(0.04, cases/10000, 0.04))
+          .times(Mat4.scale(0.04, cases/cases_scale, 0.04))
           .times(Mat4.translation(0, 1, 0));   
           
         // check if any of the boxes collide with the mouse
         let mouse_over = this.collision_box.box.some(v => {
-          let result = 0;
-          const points= [0, 0, 0, 0];
-          // transform the points, and convert them into projection space 
-          for (let i = 0; i < 4; i++) {
-            let v_tmp = v[i]
-            let p = bar_transform.times(vec4(v_tmp[0], v_tmp[1], v_tmp[2], 1));
-            p = world_to_perspective.times(p);
-            points[i] = [p[0]/p[3], -1 * p[1]/p[3], p[2]/ p[3], p[3]]; 
-          }
-
-          let p1_x = (mouse_x/w - 0.5) * 2;
-          let p1_y = (mouse_y/h - 0.5) * 2;
-          //let p1_x = mouse_x, p1_y = mouse_y;
-          let p2_x = p1_x + 100000;
-          let p2_y = p1_y;
-          
-          for (let i = 0; i < 4; i++) {
-            let x1 = points[i][0];
-            let y1 = points[i][1];
-            let x2 = points[(i + 1) % 4][0];
-            let y2 = points[(i + 1) % 4][1];
-            
-            let R = T(p1_x, p1_y, x1, y1, x2, y2) * T(p2_x, p2_y, x1, y1, x2, y2);
-            let S = T(x1, y1, p1_x, p1_y, p2_x, p2_y) * T(x2, y2, p1_x, p1_y, p2_x, p2_y);
-      
-            if (R < 0 && S < 0)
-              result += 1;
-          }
-          return result % 2 == 1;
+          return point_in_collider(v, mouse_x, mouse_y, w, h, bar_transform, world_to_perspective);
         });
 
-        let c;
+       
+        // if mouse is not on it, render as usual
         if (!mouse_over) {
-          c = color(0.2, 0.53, 0.53, 1);
+          let c = color(0.2, 0.53, 0.53, 1);
+          render_bar(this.shapes.bar, bundle, bar_transform, cases, death, false);
+        // if mouse is on it, calculate the world space coordinate in which the mouse ray intersects,
+        // and "defer" the rendering 
         } else {
-          c = color(0.7, 0.53, 0.53, 1);
-          data_text = {
-            "name": name,
-            "state_name": state_name,
-            "date": today,
-            "cases": Math.floor(cases),
-            "death":  Math.floor(death)
-          };
+          // recall mouse_vec has the mouse ray shooting out from the camera
+          // calculate the world space coordinate where the ray intersects the bar
+          //console.log(this.collision_box.box[0][0]);
+          let pos_bar = intersect(  current_pos, 
+                                    mouse_vec.to3(), 
+                                    bar_transform.times(tiny.Vector4.create(...this.collision_box.box[0][0])).to3(), // get a vertex of the collision box 
+                                                                    // and transform it into the current position
+                                    bar_transform.times(vec3(1,0,1)));  // transform the normal vector (N is hard coded)
+          let z = (world_to_perspective.times(pos_bar))[2]; // get the z buffer value
+          console.log(pos_bar);
+          // if z is the smallest value we have observed so far, this may be the 
+          // one we have to render with a highlight.
+          // Save it in a buffer in case it is
+          if (z < z_max){
+            // if there already is a data in the buffer, render it as usual since it
+            // cannot be the one we want to highlight
+            if (z_buffer.length > 0){
+              render_bar(this.shapes.bar, bundle, z_buffer[0].t, z_buffer[0].cases, z_buffer[0].death, false);
+              z_buffer.pop();
+            }
+            // buffer the current data
+            z_buffer.push({
+              "t": bar_transform.copy(),
+              "name": name,
+              "state_name": state_name,
+              "date": today,
+              "cases": Math.floor(cases),
+              "death":  Math.floor(death)
+            });
+            z_max = z;
+          }else{
+          // if z is not closer than z_max, render as usual 
+            render_bar(this.shapes.bar, bundle, bar_transform, cases, death, false);
+          }
         }
         
         //console.log(bar_transform);
-        this.shapes.bar.draw(
-          context, 
-          program_state,
-          bar_transform, 
-          this.materials.gradient.override({ base_color: c })
-        );
+        
       }
     }
 
-    // this.shapes.cube.draw(
-    //   context, 
-    //   program_state,
-    //   Mat4.identity(), 
-    //   this.materials.grey
-    // );
-
-    if (data_text.name !== undefined) {
+    // if there is something in the buffer, render it
+    if (z_buffer.length > 0) {
+     console.log("render");
+      let b = z_buffer[0];
+      render_bar(this.shapes.bar, bundle, b.t, b.cases, b.death, true);
       //const city_data = JSON.parse(data_text);
       let strings = [
         data_text.name + "," + data_text.state_name,
@@ -385,7 +382,67 @@ export class Covid_Map extends Scene {
   }
 }
 
+function render_bar(bar, bundle, t, cases, death, is_hover){
 
+  let base = color(1,1,1,1), top = color(1,0,0,1);
+  if (is_hover){
+    base = color(1,1,1,1);
+    top = color(1,1,1,1);
+  }
+  else{ 
+    if (cases > 10000){ 
+      base = color(0.4,0,0.6,1);
+    }
+    else if (cases > 5000){
+      base = color(0.2,0.3,1,1);
+    }
+    else if (cases > 1000){
+      base = color(0.2,0.5,0.8,1);
+    }
+    else{
+      base = color(0,0.3,0.5,1);
+    }
+  }
+  bar.draw(
+    bundle[0],
+    bundle[1],
+    t,
+    bundle[3].override({"base_color": base, "top_color": top})
+  );
+}
+
+
+function point_in_collider(v, m_x, m_y, w, h, bar_transform, world_to_perspective ){
+  let result = 0;
+  const points= [0, 0, 0, 0];
+  // transform the points, and convert them into projection space 
+  for (let i = 0; i < 4; i++) {
+    let v_tmp = v[i]
+    let p = bar_transform.times(vec4(v_tmp[0], v_tmp[1], v_tmp[2], 1));
+    p = world_to_perspective.times(p);
+    points[i] = [p[0]/p[3], -1 * p[1]/p[3], p[2]/ p[3], p[3]]; 
+  }
+
+  let p1_x = (m_x/w - 0.5) * 2;
+  let p1_y = (m_y/h - 0.5) * 2;
+  //let p1_x = mouse_x, p1_y = mouse_y;
+  let p2_x = p1_x + 100000;
+  let p2_y = p1_y;
+  
+  for (let i = 0; i < 4; i++) {
+    let x1 = points[i][0];
+    let y1 = points[i][1];
+    let x2 = points[(i + 1) % 4][0];
+    let y2 = points[(i + 1) % 4][1];
+    
+    let R = T(p1_x, p1_y, x1, y1, x2, y2) * T(p2_x, p2_y, x1, y1, x2, y2);
+    let S = T(x1, y1, p1_x, p1_y, p2_x, p2_y) * T(x2, y2, p1_x, p1_y, p2_x, p2_y);
+
+    if (R < 0 && S < 0)
+      result += 1;
+  }
+  return result % 2 == 1;
+}
 
 // given a vector and a normal for a plane, computes the location where the vector intersects the plane
 function intersect(p_pos, p_vec, n_pos, n_vec){
