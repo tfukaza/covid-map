@@ -378,11 +378,9 @@ export class Covid_Map extends Scene {
 
         //console.log(b.t);
 
-        let text_transform = 
-         Mat4.inverse(world_to_perspective)
-        .times(Mat4.translation(0, 0, -0.5))
-        .times(world_to_perspective)
-        .times(Mat4.translation(0, 3 + 2 * b.cases / cases_scale - i * 0.6, 0))
+        let tt = 
+        world_to_perspective
+        //.times(Mat4.translation(0, -1 + 2 * b.cases / cases_scale - i * 0.2, 0))
         .times(
             new tiny.Matrix( [1, 0, 0, b.t[0][3]],
                     [0, 1, 0, 0],
@@ -390,11 +388,19 @@ export class Covid_Map extends Scene {
                     [0, 0, 0, 1]
               )
           )
-        .times(Mat4.scale(0.2, 0.2, 0.2)); 
+        //.times(Mat4.scale(0.02, 0.02, 0.02)); 
+
+        tt = new tiny.Matrix( [0.02, 0, 0, (tt[0][3] + 1)/tt[3][3]],
+                              [0, 0.02, 0, (tt[1][3] -1 + 2 * b.cases / cases_scale - i * 0.8 )/tt[3][3]],
+                              [0, 0, 0.02, -0.1],
+                              [0, 0, 0, 1]
+          );
+        
+          tt = Mat4.inverse(world_to_perspective).times(tt);
 
         this.shapes.text.draw(  context, 
                                 program_state, 
-                                text_transform,
+                                tt,
                                 this.materials.text_image);
         i++;
       }
