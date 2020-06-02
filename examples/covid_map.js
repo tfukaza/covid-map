@@ -141,6 +141,7 @@ export class Covid_Map extends Scene {
       text: new Text_Line(35),
       map: new defs.Square(),
       cube: new defs.Cube(),
+      date: new Text_Line(20),
     };
 
     // Don't create any DOM elements to control this scene:
@@ -152,16 +153,6 @@ export class Covid_Map extends Scene {
     const txt = new defs.Textured_Phong();
 
     this.materials = {  
-      // grey: new Material(
-      //   phong, 
-      //   { 
-      //     color: color(0.5, 0.5, 0.5, 1), 
-      //     ambient: 0, 
-      //     diffusivity: 0.3, 
-      //     specularity: 0.5, 
-      //     smoothness: 10
-      //   }
-      // ),
       text_image: new Material(
         txt, 
         {
@@ -314,6 +305,12 @@ export class Covid_Map extends Scene {
         if (!mouse_over) {
           let c = color(0.2, 0.53, 0.53, 1);
           render_bar(this.shapes.bar, bundle, bar_transform, cases, death, false);
+
+        // draw date on background 
+        this.shapes.date.set_string(today, context.context); 
+        let tt2 = Mat4.translation(-3, -2 , 0).times(Mat4.scale(0.25,0.25,0.25)) 
+        this.shapes.date.draw(context, program_state, tt2, this.materials.text_image);
+
         // if mouse is on it, calculate the world space coordinate in which the mouse ray intersects,
         // and "defer" the rendering 
         } else {
