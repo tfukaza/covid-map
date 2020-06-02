@@ -464,7 +464,7 @@ function point_in_collider(v, m_x, m_y, w, h, bar_transform, world_to_perspectiv
   }
   return result % 2 == 1;
 }
-
+ 
 // given a vector and a normal for a plane, computes the location where the vector intersects the plane
 function intersect(p_pos, p_vec, n_pos, n_vec){
   // https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
