@@ -12,7 +12,7 @@ class Canvas_Widget
                             // arguments.  Optionally spawns a Text_Widget and Controls_Widget for showing more information
                             // or interactive UI buttons, divided into one panel per each loaded Scene.  You can use up to
                             // 16 Canvas_Widgets; browsers support up to 16 WebGL contexts per page.
-  constructor( element, initial_scenes, options = {} )   
+  constructor( element, initial_scenes, options = {}, dim )   
     { this.element = element;
 
       const defaults = { show_canvas: true, make_controls: true, show_explanation: true, 
@@ -53,7 +53,7 @@ class Canvas_Widget
       if( !this.show_canvas )
         canvas.style.display = "none";
 
-      this.webgl_manager = new tiny.Webgl_Manager( canvas, color( 0,0,0,1 ) );  // Second parameter sets background color.
+      this.webgl_manager = new tiny.Webgl_Manager( canvas, color( 0,0,0,1 ), dim );  // Second parameter sets background color.
 
 
                            // Add scenes and child widgets

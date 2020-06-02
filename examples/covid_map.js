@@ -475,7 +475,7 @@ function intersect(p_pos, p_vec, n_pos, n_vec){
 
 function init_events(context){
   const rec = context.canvas.getBoundingClientRect();
-    offset_x = rec.left - 8;
+    offset_x = rec.left;
     offset_y = rec.top;
     // add event listeners for mouse input
     context.canvas.addEventListener('mousemove', e => {

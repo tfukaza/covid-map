@@ -10,7 +10,25 @@
   const element_to_replace = document.querySelector( "#main-canvas" );
   import { Main_Scene, Additional_Scenes, Canvas_Widget } from './main-scene.js';  // Import the file that defines a scene.
   const scenes = [ Main_Scene, ...Additional_Scenes ].map( scene => new scene() );    // This line creates your scene.
-  new Canvas_Widget( element_to_replace, scenes );
+  new Canvas_Widget( element_to_replace, scenes, {}, [window.innerWidth, window.innerHeight] );
 </script>
+<style>
 
+body{
+      margin:0px;
+}
+
+#main-canvas{
+      margin:0px;
+      width:auto;
+}
+
+.code-widget{
+      display:none;
+}
+
+.text-widget{
+      display:none;
+}
+</style>
 </body></html>
