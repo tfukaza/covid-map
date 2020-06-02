@@ -141,7 +141,7 @@ export class Covid_Map extends Scene {
       text: new Text_Line(35),
       map: new defs.Square(),
       cube: new defs.Cube(),
-      date: new Text_Line(20),
+      date: new Text_Line(30),
     };
 
     // Don't create any DOM elements to control this scene:
@@ -306,11 +306,7 @@ export class Covid_Map extends Scene {
           let c = color(0.2, 0.53, 0.53, 1);
           render_bar(this.shapes.bar, bundle, bar_transform, cases, death, false);
 
-        // draw date on background 
-        this.shapes.date.set_string(today, context.context); 
-        let tt2 = Mat4.translation(-3, -2 , 0).times(Mat4.scale(0.25,0.25,0.25)) 
-        this.shapes.date.draw(context, program_state, tt2, this.materials.text_image);
-
+      
         // if mouse is on it, calculate the world space coordinate in which the mouse ray intersects,
         // and "defer" the rendering 
         } else {
@@ -349,7 +345,6 @@ export class Covid_Map extends Scene {
             render_bar(this.shapes.bar, bundle, bar_transform, cases, death, false);
           }
         }
-        
         //console.log(bar_transform);
         
       }
@@ -403,6 +398,26 @@ export class Covid_Map extends Scene {
       }
 
     }  
+
+     // draw date on background 
+     let ran = lerp_date((t / 20) % 1);
+     this.shapes.date.set_string(date_to_string(ran[0]) + " ~ " + date_to_string(ran[1]), context.context); 
+    //  let tt2 = world_to_perspective
+    //  //.times(Mat4.translation(0, -1 + 2 * b.cases / cases_scale - i * 0.2, 0))
+    //  .times(
+    //      Mat4.translate(1,1,0)
+    //    );
+     
+     let tt2 = new tiny.Matrix( 
+          [0.02, 0, 0, -0.9],
+          [0, 0.02, 0, -0.9],
+          [0, 0, 0.02, -0.1],
+          [0, 0, 0, 1]
+      );
+      tt2 = Mat4.inverse(world_to_perspective).times(tt2);
+     this.shapes.date.draw(context, program_state, tt2, this.materials.text_image);
+
+
   }
 }
 
