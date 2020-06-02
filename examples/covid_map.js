@@ -146,23 +146,24 @@ export class Covid_Map extends Scene {
     // Don't create any DOM elements to control this scene:
     this.widget_options = { make_controls: false };
     
-    const phong = new defs.Phong_Shader();
+    //const phong = new defs.Phong_Shader();
     const gradient = new Gradient_Shader();
     const texture = new defs.Fake_Bump_Map(1);
+    const txt = new defs.Textured_Phong();
 
     this.materials = {  
-      grey: new Material(
-        phong, 
-        { 
-          color: color(0.5, 0.5, 0.5, 1), 
-          ambient: 0, 
-          diffusivity: 0.3, 
-          specularity: 0.5, 
-          smoothness: 10
-        }
-      ),
+      // grey: new Material(
+      //   phong, 
+      //   { 
+      //     color: color(0.5, 0.5, 0.5, 1), 
+      //     ambient: 0, 
+      //     diffusivity: 0.3, 
+      //     specularity: 0.5, 
+      //     smoothness: 10
+      //   }
+      // ),
       text_image: new Material(
-        texture, 
+        txt, 
         {
           ambient: 1,
           diffusivity: 0,
@@ -194,7 +195,7 @@ export class Covid_Map extends Scene {
   }
 
   display(context, program_state) { 
-    let data_text = {};
+    //let data_text = {};
     program_state.lights = [
       new Light(Mat4.scale(3,3,3).times(vec4(-1, 5, -5, 1)), color(1, 1, 1, 1), 1000),
     ];
@@ -364,18 +365,38 @@ export class Covid_Map extends Scene {
       render_bar(this.shapes.bar, bundle, b.t, b.cases, b.death, true);
       //const city_data = JSON.parse(data_text);
       let strings = [
-        data_text.name + "," + data_text.state_name,
-        "Date: " + data_text.date,
-        "Cases: " + data_text.cases,
-        "Deaths: " + data_text.death,
+        b.name + "," + b.state_name,
+        //"Date: " + b.date,
+        "Cases: " + b.cases,
+        "Deaths: " + b.death,
       ]
 
       let i = 0;
 
       for (let s of strings){
         this.shapes.text.set_string(s, context.context);
-        this.shapes.text.draw(context, program_state, Mat4.translation(10, 6 - 2 * i, -10).times(Mat4.scale(0.5, 0.5, 0.5)), this.materials.text_image);
-        i+=2;
+
+        //console.log(b.t);
+
+        let text_transform = 
+         Mat4.inverse(world_to_perspective)
+        .times(Mat4.translation(0, 0, -0.5))
+        .times(world_to_perspective)
+        .times(Mat4.translation(0, 3 + 2 * b.cases / cases_scale - i * 0.6, 0))
+        .times(
+            new tiny.Matrix( [1, 0, 0, b.t[0][3]],
+                    [0, 1, 0, 0],
+                    [0, 0, 1, b.t[2][3]],
+                    [0, 0, 0, 1]
+              )
+          )
+        .times(Mat4.scale(0.2, 0.2, 0.2)); 
+
+        this.shapes.text.draw(  context, 
+                                program_state, 
+                                text_transform,
+                                this.materials.text_image);
+        i++;
       }
 
     }  
