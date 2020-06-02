@@ -380,7 +380,7 @@ class Mat4 extends Matrix
       let z = at.minus( eye ).normalized(),
           x =  z.cross( up  ).normalized(),
           y =  x.cross( z   ).normalized();
-          
+           
                              // Check for NaN, indicating a degenerate cross product, which 
                              // happens if eye == at, or if at minus eye is parallel to up.
       if( !x.every( i => i==i ) )                  
