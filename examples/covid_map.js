@@ -210,12 +210,15 @@ export class Covid_Map extends Scene {
 
     // if camera is being moved
     if (mouse_move){
+      context.canvas.style.cursor = "all-scroll";
       // get the difference of current and previous mouse position
       current_pos = vec3( clamp(current_pos[0] + (pos_cur[0] - pos_pre[0])/0.3, -21, 10),
                           current_pos[1], 
                           clamp(current_pos[2] + (pos_cur[2] - pos_pre[2])/0.3, -16, 1,0)
                         );
      
+    }else{
+      context.canvas.style.cursor = "default";
     }
     // record current position of mouse
     mouse_pre = [mouse_x, mouse_y];
