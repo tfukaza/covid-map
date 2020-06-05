@@ -3,20 +3,16 @@ import {data} from './data/data.js';
                                                   // Pull these names into this module's scope for convenience:
 const { Vector, vec3, vec4, color, Mat4, Light, Shape, Material, Shader, Texture, Scene } = tiny;
 
-var mouse_x, mouse_y;
-var offset_x, offset_y;
-var added_event = false;
+var mouse_x, mouse_y;     // x and y coordinates of mouse
+var offset_x, offset_y;   // offset of the canvas on screen
+var added_event = false;  // if the mouse event was initialized or not
+var mouse_move = false;   // if the mouse is currently being dragged
+var mouse_pre = [0,0];    // mouse coordinates in the previous frame 
 
-var mouse_move = false;
-var mouse_pre = [0,0];
+var current_pos = vec3(-3,-8, -16); // current position of camera
+const cases_scale = 10000;          // scaling factor between the number of corona cases and height of bars
 
-var current_pos = vec3(-3,-8, -16);
-
-const cases_scale = 10000;
-
-var w = 0, h = 0;
-
-var T = (x, y, x1, y1, x2, y2) => (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1);
+var w = 0, h = 0;                   // width and height of canvas
 
 const states = {
   "AL": "Alabama",
@@ -80,16 +76,8 @@ const states = {
   "WY": "Wyoming"
 }
 
-/** **Text_Line** embeds text in the 3D world, using a crude texture 
- *  method.  This Shape is made of a horizontal arrangement of quads.
- *  Each is textured over with images of ASCII characters, spelling 
- *  out a string.  Usage:  Instantiate the Shape with the desired
- *  character line width.  Then assign it a single-line string by calling
- *  set_string("your string") on it. Draw the shape on a material
- *  with full ambient weight, and text.png assigned as its texture 
- * file.  For multi-line strings, repeat this process and draw with
- * a different matrix. 
- **/
+
+// object to display text, taken from the example scenes
 export class Text_Line extends Shape {                    
   constructor(max_size) { 
     super("position", "normal", "texture_coord");
@@ -103,7 +91,6 @@ export class Text_Line extends Shape {
   }
 
   set_string(line, context) {
-    // set_string():  Call this to overwrite the texture coordinates buffer with new 
     // values per quad, which enclose each of the string's characters.
     this.arrays.texture_coord = [];
     for (let i = 0; i < this.max_size; i++) {
@@ -147,10 +134,9 @@ export class Covid_Map extends Scene {
     // Don't create any DOM elements to control this scene:
     this.widget_options = { make_controls: false };
     
-    //const phong = new defs.Phong_Shader();
-    const gradient = new Gradient_Shader();
-    const texture = new defs.Fake_Bump_Map(1);
-    const txt = new defs.Textured_Phong();
+    const gradient = new Gradient_Shader();     // shader for the bars
+    const texture = new Fake_Bump_Map(1);  // shader for the US map
+    const txt = new defs.Textured_Phong();      // shader for the text
 
     this.materials = {  
       text_image: new Material(
@@ -175,64 +161,55 @@ export class Covid_Map extends Scene {
         }
       )
     };
-    //this.lights = [ new Light( Vec.of(0, 0, 0, 1), Color.of(0, 0, 0, 1), 1000 ) ];
+
+    // a collision box for the bars
     this.collision_box = {
       box: [
         [[-1,-1,-1, 1], [1, -1, 1, 1], [1, 1, 1, 1], [-1, 1, -1, 1]],
         [[-1,-1,1, 1], [-1, 1, 1, 1], [1, 1, -1, 1], [1, -1, -1, 1]]
       ]
     }
-    // To show text you need a Material like this one:
   }
 
   display(context, program_state) { 
-    //let data_text = {};
-    program_state.lights = [
-      new Light(Mat4.scale(3,3,3).times(vec4(-1, 5, -5, 1)), color(1, 1, 1, 1), 1000),
-    ];
-    //program_state.set_camera( Mat4.look_at( ...Vector.cast( [ 0,0,4 ], [0,0,0], [0,1,0] ) ) );
+   
+
     program_state.projection_transform = Mat4.perspective(Math.PI/4, context.width/context.height, 1, 500);
-    //console.log(program_state);
+
     const t = program_state.animation_time/1000;
 
+    // initialize mouse events if that has not been done yet
     if (!added_event) {
       init_events(context);
     }
 
-    // meow >(owo )<
-    //       ( <   )
-    // ~~~~~~~~~~~~
-
+    // rotation of camera
     let cam_rot = Mat4.rotation(0.3, 1, 0, 0);
-
-    // usa model
-    const map_transform = Mat4.translation(3.8, 0, -0.2)
-      .times(Mat4.scale(6.0, 1, 7.0))
-      .times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
-    this.shapes.map.draw(context, program_state, map_transform, this.materials.usa_map);
 
     // generate parametric equation for mouse ray
     let mouse_vec = cam_rot.times(
-                        vec4( (mouse_x/w - 0.5) * Math.tan(Math.PI / 4 / 2),
-                          (mouse_y/h - 0.5) * Math.tan(Math.PI / 4 / 2) * (h/w),
+                        vec4( 
+                          2 * (mouse_x/w - 0.5) * Math.tan(Math.PI / 4 / 2),
+                          2 * (mouse_y/h - 0.5) * Math.tan(Math.PI / 4 / 2) * (h/w),
                           -1,
-                          0
+                          1
                         )
                     );
+                   
+    // see where it intersects with the ground
     let pos_cur = intersect(current_pos, mouse_vec.to3(), vec3(0,0,0), vec3(0,1,0));
     let mouse_vec_pre = cam_rot.times(
-                        vec4( (mouse_pre[0]/w - 0.5) * Math.tan(Math.PI / 4 / 2),
-                          (mouse_pre[1]/h - 0.5) * Math.tan(Math.PI / 4 / 2) * (h/w),
+                        vec4( 
+                          2 * (mouse_pre[0]/w - 0.5) * Math.tan(Math.PI / 4 / 2),
+                          2 * (mouse_pre[1]/h - 0.5) * Math.tan(Math.PI / 4 / 2) * (h/w),
                           -1,
-                          0
+                          1
                         )
                       );
     let pos_pre = intersect(current_pos, mouse_vec_pre.to3(), vec3(0,0,0), vec3(0,1,0));
 
-    
     // if camera is being moved
     if (mouse_move){
-    
       // get the difference of current and previous mouse position
       current_pos = vec3( clamp(current_pos[0] + (pos_cur[0] - pos_pre[0])/0.3, -21, 10),
                           current_pos[1], 
@@ -242,9 +219,27 @@ export class Covid_Map extends Scene {
     }
     // record current position of mouse
     mouse_pre = [mouse_x, mouse_y];
+    let mouse_pos = [
+      pos_cur[0] - current_pos[0] * 2,
+      5,
+      pos_cur[2] - current_pos[2] * 2,
+    ]
+   
 
-    let cam_move = cam_rot.times(Mat4.translation(current_pos[0], current_pos[1], current_pos[2]));//program_state.camera_transform;
+    // update camera location
+    let cam_move = cam_rot.times(Mat4.translation(current_pos[0], current_pos[1], current_pos[2]));
     program_state.set_camera(cam_move);
+
+    
+    program_state.lights = [
+      new Light(Mat4.scale(1,1,1).times(vec4(...mouse_pos, 1)), color(1, 1, 1, 1), 100),
+    ];
+
+    // location of the map
+    const map_transform = Mat4.translation(3.8, 0, -0.2)
+      .times(Mat4.scale(6.0, 1, 7.0))
+      .times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
+    this.shapes.map.draw(context, program_state, map_transform, this.materials.usa_map);
 
     // Get the matrix to transform world coordinates into projection coordinate
     let world_to_perspective = program_state.projection_transform.times(cam_move);
@@ -259,9 +254,7 @@ export class Covid_Map extends Scene {
       state = data[state];
       for (let county in state) {
         let name = county;
-     
         county = state[county];
-        //console.log(county);
         let lng = county.long;
         let lat = county.lat;
         let cases = 0, death = 0;
@@ -271,7 +264,7 @@ export class Covid_Map extends Scene {
         //convert to string
         [today, tmrw] = [date_to_string(today), date_to_string(tmrw)];
         // if there is no record, treat it as 0
-        //console.log((county.data)['2020-05-14']);
+     
         if ((county.data)[today] !== undefined) {
           cases = (county.data)[today].cases;
           death = (county.data)[today].death;
@@ -287,7 +280,6 @@ export class Covid_Map extends Scene {
 
         if (cases < 10)
          continue;
-        
     
         // transform the bar
         let bar_transform = Mat4
@@ -303,23 +295,21 @@ export class Covid_Map extends Scene {
        
         // if mouse is not on it, render as usual
         if (!mouse_over) {
-          let c = color(0.2, 0.53, 0.53, 1);
+      
           render_bar(this.shapes.bar, bundle, bar_transform, cases, death, false);
 
-      
         // if mouse is on it, calculate the world space coordinate in which the mouse ray intersects,
         // and "defer" the rendering 
         } else {
+         
           // recall mouse_vec has the mouse ray shooting out from the camera
           // calculate the world space coordinate where the ray intersects the bar
-          //console.log(this.collision_box.box[0][0]);
           let pos_bar = intersect(  current_pos, 
                                     mouse_vec.to3(), 
-                                    bar_transform.times(tiny.Vector4.create(...this.collision_box.box[0][0])).to3(), // get a vertex of the collision box 
-                                                                    // and transform it into the current position
+                                    bar_transform.times(tiny.Vector4.create(...this.collision_box.box[0][0])).to3(),  // get a vertex of the collision box 
+                                                                                                                      // and transform it into the current position
                                     bar_transform.times(vec3(1,0,1)));  // transform the normal vector (N is hard coded)
-          let z = (world_to_perspective.times(pos_bar))[2]; // get the z buffer value
-          console.log(pos_bar);
+          let z = (world_to_perspective.times(pos_bar))[2];             // get the z buffer value
           // if z is the smallest value we have observed so far, this may be the 
           // one we have to render with a highlight.
           // Save it in a buffer in case it is
@@ -345,20 +335,16 @@ export class Covid_Map extends Scene {
             render_bar(this.shapes.bar, bundle, bar_transform, cases, death, false);
           }
         }
-        //console.log(bar_transform);
-        
       }
     }
 
     // if there is something in the buffer, render it
     if (z_buffer.length > 0) {
-     console.log("render");
+      context.canvas.style.cursor = "crosshair";
       let b = z_buffer[0];
       render_bar(this.shapes.bar, bundle, b.t, b.cases, b.death, true);
-      //const city_data = JSON.parse(data_text);
       let strings = [
         b.name + "," + b.state_name,
-        //"Date: " + b.date,
         "Cases: " + b.cases,
         "Deaths: " + b.death,
       ]
@@ -368,11 +354,8 @@ export class Covid_Map extends Scene {
       for (let s of strings){
         this.shapes.text.set_string(s, context.context);
 
-        //console.log(b.t);
-
         let tt = 
         world_to_perspective
-        //.times(Mat4.translation(0, -1 + 2 * b.cases / cases_scale - i * 0.2, 0))
         .times(
             new tiny.Matrix( [1, 0, 0, b.t[0][3]],
                     [0, 1, 0, 0],
@@ -380,9 +363,8 @@ export class Covid_Map extends Scene {
                     [0, 0, 0, 1]
               )
           )
-        //.times(Mat4.scale(0.02, 0.02, 0.02)); 
 
-        tt = new tiny.Matrix( [0.02, 0, 0, (tt[0][3] + 1)/tt[3][3]],
+          tt = new tiny.Matrix( [0.02, 0, 0, (tt[0][3] + 1)/tt[3][3]],
                               [0, 0.02, 0, (tt[1][3] -1 + 2 * b.cases / cases_scale - i * 0.8 )/tt[3][3]],
                               [0, 0, 0.02, -0.1],
                               [0, 0, 0, 1]
@@ -398,16 +380,14 @@ export class Covid_Map extends Scene {
       }
 
     }  
+    else{
+      context.canvas.style.cursor = "default";
+    }
 
      // draw date on background 
      let ran = lerp_date((t / 20) % 1);
      this.shapes.date.set_string(date_to_string(ran[0]) + " ~ " + date_to_string(ran[1]), context.context); 
-    //  let tt2 = world_to_perspective
-    //  //.times(Mat4.translation(0, -1 + 2 * b.cases / cases_scale - i * 0.2, 0))
-    //  .times(
-    //      Mat4.translate(1,1,0)
-    //    );
-     
+  
      let tt2 = new tiny.Matrix( 
           [0.02, 0, 0, -0.9],
           [0, 0.02, 0, -0.9],
@@ -417,9 +397,10 @@ export class Covid_Map extends Scene {
       tt2 = Mat4.inverse(world_to_perspective).times(tt2);
      this.shapes.date.draw(context, program_state, tt2, this.materials.text_image);
 
-
   }
 }
+
+var T = (x, y, x1, y1, x2, y2) => (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1);
 
 function render_bar(bar, bundle, t, cases, death, is_hover){
 
@@ -464,7 +445,6 @@ function point_in_collider(v, m_x, m_y, w, h, bar_transform, world_to_perspectiv
 
   let p1_x = (m_x/w - 0.5) * 2;
   let p1_y = (m_y/h - 0.5) * 2;
-  //let p1_x = mouse_x, p1_y = mouse_y;
   let p2_x = p1_x + 100000;
   let p2_y = p1_y;
   
@@ -548,7 +528,6 @@ function clamp(n, min, max){
 
 class Gradient_Shader extends tiny.Shader             
 {                                             
-  
     update_GPU( context, gpu_addresses, graphics_state, model_transform, material )
     {            
 
@@ -610,5 +589,33 @@ class Gradient_Shader extends tiny.Shader
           void main()
           { gl_FragColor = VERTEX_COLOR;                                    // The interpolation gets done directly on the per-vertex colors.
           }`;
+    }
+}
+
+// shader for the us map, based off of the example bump map shader,
+// but modified to make it compatible with how we imported normal maps
+const Fake_Bump_Map = 
+class Fake_Bump_Map extends defs.Textured_Phong
+{                                          
+  fragment_glsl_code()
+    {                           
+      return this.shared_glsl_code() + `
+        varying vec2 f_tex_coord;
+        uniform sampler2D texture;
+
+        void main()
+          {                                                          // Sample the texture image in the correct place:
+            vec4 tex_color = texture2D( texture, f_tex_coord );
+            if( tex_color.w < .01 ) discard;
+            vec3 bumped_N  =    normalize(
+              vec3(
+                N[0] + (tex_color.x - 0.5) * 2.0,
+                N[1],
+                N[2] + (tex_color.y - 0.5) * 2.0
+              ));                        
+            
+            gl_FragColor = vec4( 0,0,0, shape_color.w * tex_color.w ); 
+            gl_FragColor.xyz = phong_model_lights( normalize( bumped_N ), vertex_worldspace );
+          } ` ;
     }
 }
