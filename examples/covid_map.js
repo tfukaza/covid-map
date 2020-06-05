@@ -364,7 +364,7 @@ export class Covid_Map extends Scene {
               )
           )
 
-          tt = new tiny.Matrix( [0.02, 0, 0, (tt[0][3] + 1)/tt[3][3]],
+          tt = new tiny.Matrix( [0.02 * (h/w), 0, 0, (tt[0][3] + 1)/tt[3][3]],
                               [0, 0.02, 0, (tt[1][3] -1 + 2 * b.cases / cases_scale - i * 0.8 )/tt[3][3]],
                               [0, 0, 0.02, -0.1],
                               [0, 0, 0, 1]
@@ -389,7 +389,7 @@ export class Covid_Map extends Scene {
      this.shapes.date.set_string(date_to_string(ran[0]) + " ~ " + date_to_string(ran[1]), context.context); 
   
      let tt2 = new tiny.Matrix( 
-          [0.02, 0, 0, -0.9],
+          [0.02 * (h/w), 0, 0, -0.9],
           [0, 0.02, 0, -0.9],
           [0, 0, 0.02, -0.1],
           [0, 0, 0, 1]
